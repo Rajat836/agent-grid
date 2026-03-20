@@ -12,8 +12,9 @@ import (
 )
 
 type Clients struct {
-	ClientSqs    clients.ClientSqsMethods
-	Notification ClientNotificationMethods
+	ClientSqs     clients.ClientSqsMethods
+	ClientGeneral ClientGeneralMethods
+	ClientOllama  AgentClientMethods
 }
 
 type clientAccess struct {
@@ -35,14 +36,9 @@ func NewClients(cfg *config.Config, logger log.Logger, cacheStore db.CacheStoreM
 
 	sqsClient := clients.NewClientSqs(&clients.SqsConfig{Ctx: ctx, Region: cfg.SQS.Region, Logger: logger, EnvName: global.Environment(cfg.Environment)})
 
-	// Initialize notification client
-	notificationClient, err := NewClientNotification(access)
-	if err != nil {
-		logger.Warnf("Failed to initialize notification client: %v", err)
-	}
-
 	return &Clients{
-		Notification: notificationClient,
-		ClientSqs:    sqsClient,
+		ClientSqs:     sqsClient,
+		ClientGeneral: NewClientGeneral(access),
+		ClientOllama:  NewOllamaAgentClient(access),
 	}
 }

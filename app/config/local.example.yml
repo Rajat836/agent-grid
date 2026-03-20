@@ -27,3 +27,7 @@ FeatureFlag:
 ClickHouse:
   enabled: true
   dsn: "tcp://clickhouse:clickhouse@localhost:9000/ontology?dial_timeout=5s&read_timeout=10s"
+
+Agents:
+  Ollama:
+    url: "http://localhost:11434/api/v1/generate"

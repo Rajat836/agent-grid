@@ -59,8 +59,8 @@ func (h *healthController) OntologySummary(c *gin.Context) {
 	log := h.Access.Logger
 
 	var upgrader = websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
+		ReadBufferSize:  2048,
+		WriteBufferSize: 2048,
 		CheckOrigin: func(r *http.Request) bool {
 			return true // Allow all origins for simplicity, adjust for production
 		},

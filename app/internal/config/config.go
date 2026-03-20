@@ -71,6 +71,15 @@ type Config struct {
 	SQS             SQSConfig           `yaml:"SQS"`
 	ClickHouse      ClickHouseConfig    `yaml:"ClickHouse"`
 	FeatureFlags    FeatureFlags        `yaml:"FeatureFlags"`
+	Agents          AgentsConfig        `yaml:"Agents"`
+}
+
+type AgentsConfig struct {
+	Ollama OllamaConfig `yaml:"Ollama"`
+}
+
+type OllamaConfig struct {
+	Url string `yaml:"url"`
 }
 
 // Load returns an application configuration which is populated from the given configuration file and environment variables.

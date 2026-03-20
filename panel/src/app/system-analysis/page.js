@@ -404,7 +404,7 @@ export default function SystemAnalysisPage() {
       }
     };
 
-    socket.onerror = () => {
+    socket.onerror = (event) => {
       const errorTime = Date.now();
 
       setSteps((currentSteps) => [
@@ -423,7 +423,10 @@ export default function SystemAnalysisPage() {
           id: `step-error-${errorTime}`,
           type: "error",
           message: "Connection error",
-          payload: "Failed to connect to /agent/v1/ontology/summary.",
+          payload: `Failed to connect to /agent/v1/ontology/summary.
+
+Error details: ${event.message || event.type || "Unknown error"}
+`,
           status: "done",
           startedAt: errorTime,
           endedAt: errorTime,
@@ -436,10 +439,16 @@ export default function SystemAnalysisPage() {
       setAnalysisFinishedAt(errorTime);
     };
 
-    socket.onclose = () => {
+    socket.onclose = (event) => {
       if (socketRef.current === socket) {
         socketRef.current = null;
       }
+      console.warn(
+        "WebSocket connection closed:",
+        `Code: ${event.code}`,
+        `Reason: ${event.reason}`,
+        `Was Clean: ${event.wasClean}`
+      );
     };
   };
 

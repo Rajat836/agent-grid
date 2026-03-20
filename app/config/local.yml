@@ -1,9 +1,9 @@
-ServerPort: 4441
-GrpcPort: 4442
+ServerPort: 4541
+GrpcPort: 4542
 AppName: "ontology"
 AppVersion: "0.0.1"
 BaseUrl: "http://localhost:4441"
-OtlpExporterUrl: "localhost:4318"
+OtlpExporterUrl: ""
 Environment: "local" # local, stg, production
 Redis:
   host: "localhost"
@@ -27,3 +27,7 @@ FeatureFlag:
 ClickHouse:
   enabled: true
   dsn: "tcp://clickhouse:clickhouse@localhost:9000/ontology?dial_timeout=5s&read_timeout=10s"
+
+Agents:
+  Ollama:
+    url: "http://localhost:11434/api/generate"
