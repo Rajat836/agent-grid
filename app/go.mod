@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	bitbucket.org/fyscal/be-commons v1.1.40
+	bitbucket.org/fyscal/be-proto v1.2.58
 	github.com/gin-gonic/gin v1.10.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.4.2
@@ -15,7 +16,6 @@ require (
 )
 
 require (
-	bitbucket.org/fyscal/be-proto v1.2.58 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/ClickHouse/ch-go v0.65.1 // indirect
 	github.com/ClickHouse/clickhouse-go/v2 v2.34.0 // indirect

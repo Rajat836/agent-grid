@@ -36,7 +36,7 @@ export default function Documentation() {
                 <p className="text-sm text-gray-700 dark:text-gray-300">Detailed API documentation for developers and integration specialists.</p>
               </div>
               <div className="p-4 rounded-lg bg-gray-50 dark:bg-slate-800 border border-gray-300 dark:border-slate-700">
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2\">🔧 Troubleshooting</h3>
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">🔧 Troubleshooting</h3>
                 <p className="text-sm text-gray-700 dark:text-gray-300">Common issues resolved with detailed solutions and workarounds.</p>
               </div>
             </div>

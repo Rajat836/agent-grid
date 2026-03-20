@@ -40,4 +40,3 @@ type ReadinessResponse struct {
 	Ready     bool      `json:"ready"`
 	Timestamp time.Time `json:"timestamp"`
 }
-
