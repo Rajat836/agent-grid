@@ -11,7 +11,7 @@ import (
 type WebsocketMessageType string
 
 const (
-	WebsocketMessageTypeInfo       WebsocketMessageType = "info"
+	WebsocketMessageTypeInfo       WebsocketMessageType = "start"
 	WebsocketMessageTypeWarning    WebsocketMessageType = "warning"
 	WebsocketMessageTypeError      WebsocketMessageType = "error"
 	WebsocketMessageTypeUpdate     WebsocketMessageType = "update"
