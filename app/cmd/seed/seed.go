@@ -152,7 +152,7 @@ type EntityTransition struct {
 	ToEntityID           int64     `gorm:"not null;index:idx_entity_transitions_to_entity_id" json:"to_entity_id"`
 	ConditionDescription string    `gorm:"type:text" json:"condition_description"`
 	ConditionExpression  string    `gorm:"type:text" json:"condition_expression"`
-	TransitionType       string    `gorm:"type:varchar(64);index:idx_entity_transitions_transition_type" json:"transition_type"`
+	TransitionType       string    `gorm:"type:varchar(128);index:idx_entity_transitions_transition_type" json:"transition_type"`
 	CreatedAt            time.Time `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	FromEntity           Entity    `gorm:"foreignKey:FromEntityID" json:"from_entity,omitempty"`
 	ToEntity             Entity    `gorm:"foreignKey:ToEntityID" json:"to_entity,omitempty"`
@@ -163,8 +163,8 @@ func (EntityTransition) TableName() string { return "entity_transitions" }
 type Entity struct {
 	ID           int64          `gorm:"primaryKey;autoIncrement" json:"id"`
 	FeatureID    *int64         `gorm:"default:NULL;index:idx_entities_feature_id" json:"feature_id"`
-	Code         string         `gorm:"type:varchar(32);not null;uniqueIndex" json:"code"`
-	Name         string         `gorm:"type:varchar(64);not null;index:idx_entities_name" json:"name"`
+	Code         string         `gorm:"type:varchar(128);not null;uniqueIndex" json:"code"`
+	Name         string         `gorm:"type:varchar(128);not null;index:idx_entities_name" json:"name"`
 	Description  string         `gorm:"type:text" json:"description"`
 	DisplayOrder int            `gorm:"default:0" json:"display_order"`
 	IsStart      bool           `gorm:"default:false;index:idx_entities_is_start" json:"is_start"`
@@ -214,8 +214,8 @@ type FeatureTeamRole struct {
 
 type Feature struct {
 	ID          int64          `gorm:"primaryKey;autoIncrement" json:"id"`
-	Code        string         `gorm:"type:varchar(32);not null;uniqueIndex" json:"code"`
-	Name        string         `gorm:"type:varchar(64);not null;index:idx_features_name" json:"name"`
+	Code        string         `gorm:"type:varchar(128);not null;uniqueIndex" json:"code"`
+	Name        string         `gorm:"type:varchar(128);not null;index:idx_features_name" json:"name"`
 	Description string         `gorm:"type:text" json:"description"`
 	IsActive    bool           `gorm:"default:true;index:idx_features_is_active" json:"is_active"`
 	CreatedAt   time.Time      `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
@@ -228,12 +228,12 @@ func (Feature) TableName() string { return "features" }
 type KpiRelationship struct {
 	ID               int64      `gorm:"primaryKey;autoIncrement" json:"id"`
 	KpiID            int64      `gorm:"not null;index:idx_kpis_relationships_kpi_id" json:"kpi_id"`
-	RelationType     string     `gorm:"type:varchar(64);not null;index:idx_kpis_relationships_relation_type" json:"relation_type"`
-	TargetType       string     `gorm:"type:varchar(64);not null;index:idx_kpis_relationships_target" json:"target_type"`
+	RelationType     string     `gorm:"type:varchar(128);not null;index:idx_kpis_relationships_relation_type" json:"relation_type"`
+	TargetType       string     `gorm:"type:varchar(128);not null;index:idx_kpis_relationships_target" json:"target_type"`
 	TargetID         int64      `gorm:"not null;index:idx_kpis_relationships_target" json:"target_id"`
 	Weight           float64    `gorm:"default:0" json:"weight"`
-	WeightSetBy      string     `gorm:"type:varchar(64)" json:"weight_set_by"`
-	WeightReviewedBy string     `gorm:"type:varchar(64)" json:"weight_reviewed_by"`
+	WeightSetBy      string     `gorm:"type:varchar(128)" json:"weight_set_by"`
+	WeightReviewedBy string     `gorm:"type:varchar(128)" json:"weight_reviewed_by"`
 	WeightReviewedAt *time.Time `gorm:"default:NULL" json:"weight_reviewed_at,omitempty"`
 	CreatedAt        time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt        time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
@@ -244,11 +244,11 @@ func (KpiRelationship) TableName() string { return "kpis_relationships" }
 
 type Kpi struct {
 	ID               int64             `gorm:"primaryKey;autoIncrement" json:"id"`
-	Code             string            `gorm:"type:varchar(32);not null;uniqueIndex" json:"code"`
-	Name             string            `gorm:"type:varchar(64);not null;index:idx_kpis_name" json:"name"`
+	Code             string            `gorm:"type:varchar(128);not null;uniqueIndex" json:"code"`
+	Name             string            `gorm:"type:varchar(128);not null;index:idx_kpis_name" json:"name"`
 	Description      string            `gorm:"type:text" json:"description"`
-	MetricType       string            `gorm:"type:varchar(64);not null;index:idx_kpis_metric_type" json:"metric_type"`
-	Unit             string            `gorm:"type:varchar(32)" json:"unit"`
+	MetricType       string            `gorm:"type:varchar(128);not null;index:idx_kpis_metric_type" json:"metric_type"`
+	Unit             string            `gorm:"type:varchar(128)" json:"unit"`
 	CreatedAt        time.Time         `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt        time.Time         `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 	KpiRelationships []KpiRelationship `gorm:"foreignKey:KpiID" json:"kpi_relationships,omitempty"`
@@ -273,7 +273,7 @@ type ServiceTeamRole struct {
 	ID         int64      `gorm:"primaryKey;autoIncrement" json:"id"`
 	ServiceID  int64      `gorm:"not null;index:idx_service_team_roles_service_id" json:"service_id"`
 	TeamID     int64      `gorm:"not null;index:idx_service_team_roles_team_id" json:"team_id"`
-	Role       string     `gorm:"type:varchar(64);not null;index:idx_service_team_roles_role" json:"role"`
+	Role       string     `gorm:"type:varchar(128);not null;index:idx_service_team_roles_role" json:"role"`
 	AssignedAt time.Time  `gorm:"default:CURRENT_TIMESTAMP" json:"assigned_at"`
 	RevokedAt  *time.Time `gorm:"default:NULL" json:"revoked_at,omitempty"`
 	Service    Service    `gorm:"foreignKey:ServiceID" json:"service,omitempty"`
@@ -284,11 +284,11 @@ func (ServiceTeamRole) TableName() string { return "service_team_roles" }
 
 type Service struct {
 	ID               int64             `gorm:"primaryKey;autoIncrement" json:"id"`
-	Code             string            `gorm:"type:varchar(32);not null;uniqueIndex" json:"code"`
-	Name             string            `gorm:"type:varchar(64);not null;index:idx_services_name" json:"name"`
+	Code             string            `gorm:"type:varchar(128);not null;uniqueIndex" json:"code"`
+	Name             string            `gorm:"type:varchar(128);not null;index:idx_services_name" json:"name"`
 	Description      string            `gorm:"type:text" json:"description"`
 	RepositoryURL    string            `gorm:"type:varchar(512)" json:"repository_url"`
-	CriticalityLevel string            `gorm:"type:varchar(32);index:idx_services_criticality_level" json:"criticality_level"`
+	CriticalityLevel string            `gorm:"type:varchar(128);index:idx_services_criticality_level" json:"criticality_level"`
 	CreatedAt        time.Time         `gorm:"default:CURRENT_TIMESTAMP" json:"created_at"`
 	UpdatedAt        time.Time         `gorm:"default:CURRENT_TIMESTAMP" json:"updated_at"`
 	DeletedAt        gorm.DeletedAt    `gorm:"default:NULL" json:"deleted_at"`
@@ -299,7 +299,7 @@ func (Service) TableName() string { return "services" }
 
 type Team struct {
 	ID               int64             `gorm:"primaryKey;autoIncrement" json:"id"`
-	Name             string            `gorm:"type:varchar(64);not null;index:idx_teams_name" json:"name"`
+	Name             string            `gorm:"type:varchar(128);not null;index:idx_teams_name" json:"name"`
 	SlackChannel     string            `gorm:"type:varchar(128)" json:"slack_channel"`
 	PagerdutyKey     string            `gorm:"type:varchar(128)" json:"pagerduty_key"`
 	OncallEmail      string            `gorm:"type:varchar(255)" json:"oncall_email"`
@@ -741,7 +741,7 @@ func seedFeatures(db *gorm.DB) ([]Feature, error) {
 	for i := 1; i <= numFeatures; i++ {
 		workflow := featureSeedData[i-1]
 		list = append(list, Feature{
-			Code:        fmt.Sprintf("FEAT_%03d", i),
+			Code:        strings.ToLower(strings.ReplaceAll(workflow.name, " ", "_")),
 			Name:        workflow.name,
 			Description: workflow.description,
 			IsActive:    i%9 != 0,
@@ -759,7 +759,7 @@ func seedServices(db *gorm.DB) ([]Service, error) {
 	for i := 1; i <= numServices; i++ {
 		service := serviceSeedData[i-1]
 		list = append(list, Service{
-			Code:             fmt.Sprintf("SVC_%03d", i),
+			Code:             strings.ToLower(strings.ReplaceAll(service.name, " ", "_")),
 			Name:             service.name,
 			Description:      service.description,
 			RepositoryURL:    fmt.Sprintf("https://git.example.com/services/%s.git", strings.ToLower(strings.ReplaceAll(service.name, " ", "-"))),
@@ -799,7 +799,7 @@ func seedEntities(db *gorm.DB, features []Feature) ([]Entity, error) {
 		entitySeed := entitySeedData[i-1]
 		list = append(list, Entity{
 			FeatureID:    &f.ID,
-			Code:         fmt.Sprintf("ENT_%03d", i),
+			Code:         strings.ToLower(strings.ReplaceAll(entitySeed.name, " ", "_")),
 			Name:         entitySeed.name,
 			Description:  fmt.Sprintf("%s Workflow: %s.", entitySeed.description, f.Description),
 			DisplayOrder: i,
@@ -1004,7 +1004,7 @@ func seedKpis(db *gorm.DB) ([]Kpi, error) {
 	for i := 1; i <= numKpis; i++ {
 		kpi := kpiSeedData[i-1]
 		list = append(list, Kpi{
-			Code:        fmt.Sprintf("KPI_%03d", i),
+			Code:        strings.ToLower(strings.ReplaceAll(kpi.name, " ", "_")),
 			Name:        kpi.name,
 			Description: kpi.description,
 			MetricType:  kpi.metricType,
