@@ -65,7 +65,7 @@ type OllamaResponse struct {
 func (c *OllamaAgentClient) GenerateResponse(sysPrompt string) (*ResponseAgentModel, error) {
 	logger := c.Access.logger
 	reqBody := OllamaRequest{
-		Model:  "llama3", // or mistral / phi
+		Model:  "tinyllama", // or mistral / phi
 		Prompt: sysPrompt,
 		Stream: false,
 	}

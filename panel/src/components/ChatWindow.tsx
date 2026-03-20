@@ -82,7 +82,7 @@ export function ChatWindow({ onMessagesUpdate, onStepsUpdate }: ChatWindowProps)
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -147,7 +147,7 @@ export function ChatWindow({ onMessagesUpdate, onStepsUpdate }: ChatWindowProps)
           placeholder="Ask a question about system analysis..."
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyDown}
           disabled={isLoading}
           className="flex-1 border-gray-300 dark:border-gray-700 bg-white/50 dark:bg-slate-800/50 text-gray-900 dark:text-gray-100 focus:border-accent-blue dark:focus:border-blue-400 focus:ring-2 focus:ring-accent-blue/20 dark:focus:ring-blue-400/20 placeholder:text-gray-500 dark:placeholder:text-gray-400"
         />

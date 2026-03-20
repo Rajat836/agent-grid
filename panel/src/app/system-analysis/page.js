@@ -11,6 +11,7 @@ import {
   Copy,
   Hexagon,
   Lock,
+  Mail,
   Network,
   Send,
   Sparkles,
@@ -222,13 +223,15 @@ function StepCard({ step, index, state, onToggle }) {
 
 export default function SystemAnalysisPage() {
   const [prompt, setPrompt] = useState("");
-  const [conversation, setConversation] = useState([]);
+  const [runs, setRuns] = useState([]);
   const [steps, setSteps] = useState([]);
-  const [finalEvent, setFinalEvent] = useState(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [activeRunId, setActiveRunId] = useState(null);
   const [analysisStartedAt, setAnalysisStartedAt] = useState(null);
   const [analysisFinishedAt, setAnalysisFinishedAt] = useState(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedRunId, setCopiedRunId] = useState(null);
+  const [emailDrafts, setEmailDrafts] = useState({});
+  const [emailFeedback, setEmailFeedback] = useState({});
   const [now, setNow] = useState(Date.now());
   const socketRef = useRef(null);
   const chatScrollRef = useRef(null);
@@ -245,7 +248,7 @@ export default function SystemAnalysisPage() {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
-  }, [conversation, finalEvent, steps.length]);
+  }, [runs, steps.length]);
 
   useEffect(() => {
     return () => {
@@ -277,6 +280,21 @@ export default function SystemAnalysisPage() {
     setAnalysisFinishedAt(finishedAt);
   };
 
+  const setRunState = (runId, updater) => {
+    setRuns((currentRuns) =>
+      currentRuns.map((run) => (run.id === runId ? { ...run, ...updater(run) } : run))
+    );
+  };
+
+  const getEmailBody = (run) => {
+    const responseBody =
+      run.response?.payload ||
+      run.error?.payload ||
+      "No response body was returned for this analysis.";
+
+    return `Prompt:\n${run.prompt}\n\nResponse:\n${responseBody}`;
+  };
+
   const startAnalysis = (submittedPrompt) => {
     if (socketRef.current) {
       socketRef.current.close();
@@ -285,18 +303,21 @@ export default function SystemAnalysisPage() {
 
     const websocketUrl = getSummaryWebSocketUrl();
     const startedAt = Date.now();
-    const startEvent = {
-      id: `start-${startedAt}`,
-      type: "start",
-      message: "Prompt submitted",
-      payload: submittedPrompt,
-      createdAt: startedAt,
+    const runId = `run-${startedAt}`;
+    const run = {
+      id: runId,
+      prompt: submittedPrompt,
+      startedAt,
+      finishedAt: null,
+      status: "streaming",
+      response: null,
+      error: null,
     };
 
-    setConversation([startEvent]);
+    setRuns((currentRuns) => [...currentRuns, run]);
     setSteps([]);
-    setFinalEvent(null);
-    setCopied(false);
+    setCopiedRunId(null);
+    setActiveRunId(runId);
     setIsStreaming(true);
     setAnalysisStartedAt(startedAt);
     setAnalysisFinishedAt(null);
@@ -316,6 +337,15 @@ export default function SystemAnalysisPage() {
           expanded: true,
         },
       ]);
+      setRunState(runId, () => ({
+        finishedAt,
+        status: "error",
+        error: {
+          message: "Configuration error",
+          payload: "Could not resolve the WebSocket host for /agent/v1/ontology/summary.",
+          createdAt: finishedAt,
+        },
+      }));
       setAnalysisFinishedAt(finishedAt);
       setIsStreaming(false);
       return;
@@ -334,6 +364,62 @@ export default function SystemAnalysisPage() {
       try {
         const data = JSON.parse(event.data);
 
+        if (data.type === "error") {
+          setSteps((currentSteps) => {
+            const finalized = currentSteps.map((step) =>
+              step.status === "active"
+                ? {
+                    ...step,
+                    status: "done",
+                    expanded: false,
+                    endedAt: eventTime,
+                    elapsedMs: eventTime - step.startedAt,
+                  }
+                : step
+            );
+
+            return [
+              ...finalized,
+              {
+                id: `step-${eventTime}`,
+                type: "error",
+                message: data.message || "Processing error",
+                payload:
+                  typeof data.payload === "string"
+                    ? data.payload
+                    : data.payload != null
+                      ? JSON.stringify(data.payload, null, 2)
+                      : "",
+                status: "done",
+                startedAt: eventTime,
+                endedAt: eventTime,
+                elapsedMs: 0,
+                expanded: true,
+              },
+            ];
+          });
+
+          setIsStreaming(false);
+          setAnalysisFinishedAt(eventTime);
+          setRunState(runId, () => ({
+            finishedAt: eventTime,
+            status: "error",
+            error: {
+              message: data.message || "Processing error",
+              payload:
+                typeof data.payload === "string"
+                  ? data.payload
+                  : data.payload != null
+                    ? JSON.stringify(data.payload, null, 2)
+                    : "",
+              createdAt: eventTime,
+            },
+          }));
+          socket.close();
+          socketRef.current = null;
+          return;
+        }
+
         if (data.type === "last_update") {
           const result = {
             id: `last-${eventTime}`,
@@ -347,8 +433,11 @@ export default function SystemAnalysisPage() {
           };
 
           finalizeRun(eventTime);
-          setFinalEvent(result);
-          setConversation((current) => [...current, result]);
+          setRunState(runId, () => ({
+            finishedAt: eventTime,
+            status: "done",
+            response: result,
+          }));
           socket.close();
           socketRef.current = null;
           return;
@@ -401,6 +490,19 @@ export default function SystemAnalysisPage() {
             expanded: true,
           },
         ]);
+        setIsStreaming(false);
+        setAnalysisFinishedAt(eventTime);
+        setRunState(runId, () => ({
+          finishedAt: eventTime,
+          status: "error",
+          error: {
+            message: "Invalid server message",
+            payload: String(event.data || "Unknown event payload"),
+            createdAt: eventTime,
+          },
+        }));
+        socket.close();
+        socketRef.current = null;
       }
     };
 
@@ -437,6 +539,18 @@ Error details: ${event.message || event.type || "Unknown error"}
 
       setIsStreaming(false);
       setAnalysisFinishedAt(errorTime);
+      setRunState(runId, () => ({
+        finishedAt: errorTime,
+        status: "error",
+        error: {
+          message: "Connection error",
+          payload: `Failed to connect to /agent/v1/ontology/summary.
+
+Error details: ${event.message || event.type || "Unknown error"}
+`,
+          createdAt: errorTime,
+        },
+      }));
     };
 
     socket.onclose = (event) => {
@@ -461,6 +575,13 @@ Error details: ${event.message || event.type || "Unknown error"}
     startAnalysis(trimmed);
   };
 
+  const handlePromptKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      handleSubmit();
+    }
+  };
+
   const handleSuggestion = (value) => {
     setPrompt(value);
     if (!isStreaming) {
@@ -468,22 +589,166 @@ Error details: ${event.message || event.type || "Unknown error"}
     }
   };
 
-  const handleCopy = async () => {
-    if (!finalEvent?.payload) {
+  const handleCopy = async (run) => {
+    if (!run?.response?.payload) {
       return;
     }
 
     try {
-      await navigator.clipboard.writeText(finalEvent.payload);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1400);
+      await navigator.clipboard.writeText(run.response.payload);
+      setCopiedRunId(run.id);
+      window.setTimeout(() => setCopiedRunId((current) => (current === run.id ? null : current)), 1400);
     } catch {
-      setCopied(false);
+      setCopiedRunId(null);
     }
   };
 
+  const handleEmailChange = (runId, value) => {
+    setEmailDrafts((current) => ({ ...current, [runId]: value }));
+    setEmailFeedback((current) => ({ ...current, [runId]: "" }));
+  };
+
+  const handleEmailSend = (run) => {
+    const draftRecipient = emailDrafts[run.id] || "";
+    const promptedRecipient = window.prompt("Enter email address", draftRecipient);
+
+    if (promptedRecipient == null) {
+      return;
+    }
+
+    const recipient = promptedRecipient.trim();
+
+    if (!recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
+      setEmailFeedback((current) => ({
+        ...current,
+        [run.id]: "Enter a valid email address.",
+      }));
+      return;
+    }
+
+    const subject = `Ontology AI response · ${new Date(run.finishedAt || run.startedAt).toLocaleString()}`;
+    const body = getEmailBody(run);
+    const mailtoUrl = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    setEmailDrafts((current) => ({ ...current, [run.id]: recipient }));
+    window.location.href = mailtoUrl;
+    setEmailFeedback((current) => ({
+      ...current,
+      [run.id]: `Opened your email client for ${recipient}.`,
+    }));
+  };
+
+  const activeRun = runs.find((run) => run.id === activeRunId) || null;
+
+  const renderRunCard = (run) => {
+    const resultEvent = run.response || run.error;
+    const isCompleted = Boolean(run.response);
+    const feedback = emailFeedback[run.id];
+
+    return (
+      <div key={run.id} className="mt-5 space-y-4">
+        <div className="flex justify-end">
+          <div className="max-w-2xl rounded-[14px_4px_14px_14px] bg-[linear-gradient(135deg,#5b21b6,#0e7490)] px-4 py-3 text-sm text-white shadow-[0_4px_24px_rgba(124,58,237,0.3)]">
+            {run.prompt}
+          </div>
+        </div>
+
+        {run.status === "streaming" ? (
+          <ShimmerCard />
+        ) : resultEvent ? (
+          <div className="glass-panel overflow-hidden rounded-[14px] animate-[resultEnter_0.4s_ease-out_forwards]">
+            <div
+              className={cn(
+                "h-[2px] w-full",
+                isCompleted
+                  ? "bg-[linear-gradient(90deg,transparent,#a78bfa,#22d3ee,transparent)]"
+                  : "bg-[linear-gradient(90deg,transparent,#fb7185,#f59e0b,transparent)]"
+              )}
+            />
+            <div className="p-5">
+              <div className="flex flex-col gap-3 border-b border-white/8 pb-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-full border border-white/8",
+                      isCompleted
+                        ? "bg-[rgba(167,139,250,0.08)] text-[#c4b5fd]"
+                        : "bg-[rgba(251,113,133,0.08)] text-[#fda4af]"
+                    )}
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="text-[15px] text-[#f5f3ff]"
+                        style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700 }}
+                      >
+                        {resultEvent.message || (isCompleted ? "Analysis Complete" : "Analysis Error")}
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.18em]",
+                          isCompleted
+                            ? "border border-[rgba(167,139,250,0.22)] bg-[rgba(167,139,250,0.08)] text-[#c4b5fd]"
+                            : "border border-[rgba(251,113,133,0.22)] bg-[rgba(251,113,133,0.08)] text-[#fda4af]"
+                        )}
+                      >
+                        {isCompleted ? "last_update" : "error"}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-[rgba(255,255,255,0.35)]">
+                      {new Date(resultEvent.createdAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {isCompleted ? (
+                  <div className="flex flex-wrap items-center justify-end gap-2 self-start">
+                    <button
+                      type="button"
+                      onClick={() => handleEmailSend(run)}
+                      className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(34,211,238,0.24)] bg-[rgba(34,211,238,0.08)] px-3 py-2 text-xs text-[#e2e8f0] transition hover:bg-[rgba(34,211,238,0.14)]"
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      Send Email
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(run)}
+                      className="inline-flex items-center gap-2 rounded-[10px] border border-white/8 bg-white/4 px-3 py-2 text-xs text-[#e2e8f0] transition hover:border-[rgba(34,211,238,0.22)] hover:bg-[rgba(34,211,238,0.08)]"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      {copiedRunId === run.id ? "Copied" : "Copy"}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mt-5">
+                <MarkdownContent content={resultEvent.payload} />
+              </div>
+
+              {isCompleted ? (
+                <div className="mt-3">
+                  {feedback ? (
+                    <div className="text-xs text-[rgba(255,255,255,0.55)]">{feedback}</div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
   const completionLabel =
-    finalEvent && analysisFinishedAt
+    activeRun?.response && analysisFinishedAt
       ? `Analysis complete  ·  ${steps.length} steps  ·  ${(totalElapsedMs / 1000).toFixed(1)}s`
       : null;
 
@@ -786,69 +1051,11 @@ Error details: ${event.message || event.type || "Unknown error"}
                 </div>
 
                 <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-5 py-5">
-                  {finalEvent ? (
-                    <div className="glass-panel overflow-hidden rounded-[14px] animate-[resultEnter_0.4s_ease-out_forwards]">
-                      <div className="h-[2px] w-full bg-[linear-gradient(90deg,transparent,#a78bfa,#22d3ee,transparent)]" />
-                      <div className="p-5">
-                        <div className="flex flex-col gap-3 border-b border-white/8 pb-4 lg:flex-row lg:items-center lg:justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/8 bg-[rgba(167,139,250,0.08)] text-[#c4b5fd]">
-                              <Sparkles className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className="text-[15px] text-[#f5f3ff]"
-                                  style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700 }}
-                                >
-                                  Analysis Complete
-                                </span>
-                                <span className="rounded-full border border-[rgba(167,139,250,0.22)] bg-[rgba(167,139,250,0.08)] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-[#c4b5fd]">
-                                  last_update
-                                </span>
-                              </div>
-                              <div className="mt-1 text-xs text-[rgba(255,255,255,0.35)]">
-                                {new Date(finalEvent.createdAt).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  second: "2-digit",
-                                })}
-                              </div>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={handleCopy}
-                            className="inline-flex items-center gap-2 self-start rounded-[10px] border border-white/8 bg-white/4 px-3 py-2 text-xs text-[#e2e8f0] transition hover:border-[rgba(34,211,238,0.22)] hover:bg-[rgba(34,211,238,0.08)]"
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                            {copied ? "Copied" : "Copy"}
-                          </button>
-                        </div>
-
-                        <div className="mt-5">
-                          <MarkdownContent content={finalEvent.payload} />
-                        </div>
-                      </div>
-                    </div>
-                  ) : isStreaming ? (
-                    <ShimmerCard />
-                  ) : conversation.length === 0 ? (
+                  {runs.length === 0 ? (
                     <RingsEmptyState onPick={handleSuggestion} />
                   ) : (
-                    <ShimmerCard />
+                    runs.map((run) => renderRunCard(run))
                   )}
-
-                  {conversation
-                    .filter((entry) => entry.type === "start")
-                    .map((entry) => (
-                      <div key={entry.id} className="mt-5 flex justify-end">
-                        <div className="max-w-2xl rounded-[14px_4px_14px_14px] bg-[linear-gradient(135deg,#5b21b6,#0e7490)] px-4 py-3 text-sm text-white shadow-[0_4px_24px_rgba(124,58,237,0.3)]">
-                          {entry.payload}
-                        </div>
-                      </div>
-                    ))}
                 </div>
               </section>
 
@@ -858,6 +1065,7 @@ Error details: ${event.message || event.type || "Unknown error"}
                     <textarea
                       value={prompt}
                       onChange={(event) => setPrompt(event.target.value)}
+                      onKeyDown={handlePromptKeyDown}
                       placeholder="Ask about your system..."
                       disabled={isStreaming}
                       rows={3}
@@ -886,7 +1094,7 @@ Error details: ${event.message || event.type || "Unknown error"}
                     <span
                       className={cn(
                         "h-2.5 w-2.5 rounded-full",
-                        finalEvent
+                        activeRun?.response
                           ? "bg-[#6ee7b7]"
                           : isStreaming
                             ? "bg-amber-300 animate-pulse"
