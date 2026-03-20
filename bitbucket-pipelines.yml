@@ -1,0 +1,168 @@
+image: atlassian/default-image:latest
+
+options:
+  max-time: 30 # timeout set to 60 minutes for each step
+
+definitions:
+  steps:
+    - step: &notify-slack
+        name: Notify in Slack
+        runs-on:
+          - 'self.hosted'
+          - 'linux.arm64'
+        image: curlimages/curl:latest
+        script:
+          - |
+            SHORT_COMMIT=${BITBUCKET_COMMIT:0:7}
+            MY_MESSAGE="✅ *Deployment Success*\n• *Project:* $BITBUCKET_REPO_SLUG\n• *Commit:* $SHORT_COMMIT\n• *Tag:* ${BITBUCKET_TAG:-N/A}\n• *Environment:* $BITBUCKET_DEPLOYMENT_ENVIRONMENT\n• *Build:* $BITBUCKET_BUILD_NUMBER"
+            curl -X POST -H "Content-type: application/json" \
+            --data "{\"text\":\"$MY_MESSAGE\"}" \
+            "$SLACK_WEBHOOK_URL"
+
+    - step: &fe_lint_and_test
+        name: fe lint and test
+        runs-on:
+            - 'self.hosted'
+            - 'linux.arm64'
+        image: node:22.20.0-alpine3.22
+        caches:
+          - node
+        script:
+          - apk add --no-cache git curl
+          - cd panel && npm install --frozen-lockfile && npm run lint && npm run build && cd ..
+          - |
+            if [ -n "$(git status --porcelain)" ]; then
+              git add -A
+              git commit --no-verify -a -m "[skip ci] lint issues fixed using pipeline"
+              git push
+            else
+              echo "No changes to commit"
+            fi
+
+    - step: &be_lint_and_test
+        name: be lint and test
+        image: golang:1.25.3-alpine3.22
+        runs-on:
+          - 'self.hosted'
+          - 'linux.arm64'
+        script:
+          - apk add git bash make
+          - export GOPRIVATE=bitbucket.org/risk-manager-x
+          - echo "machine bitbucket.org login $BITBUCKET_USER password $BITBUCKET_PASSWORD" > ~/.netrc
+          - cp ./app/config/local.example.yml ./app/config/local.yml
+          - cd app && make fmt && make vet && go test ./... -v && cd ..
+          - |
+            if [ -n "$(git status --porcelain)" ]; then
+              git add -A && git commit --no-verify -a -m "[skip ci] formatted code using pipeline" && git push
+            else
+              echo "No changes to commit"
+            fi
+
+    - step: &be-build-and-push
+        name: build and push image
+        runs-on:
+          - 'self.hosted'
+          - 'linux.arm64'
+        services:
+          - docker
+        script:
+          - IMAGE_NAME="$SERVICE_NAME:$BITBUCKET_BUILD_NUMBER"
+          - FILENAME="$SERVICE_NAME-$BITBUCKET_BUILD_NUMBER"
+          - IMAGE_PATH="/home/$SERVER_USERNAME/.images/" # image path in server
+          - SHORT_COMMIT=${BITBUCKET_COMMIT::7}
+          - echo "Building image $IMAGE_NAME with filename $FILENAME"
+          - docker build --build-arg COMMIT_HASH=${SHORT_COMMIT} --build-arg BITBUCKET_USER=${BITBUCKET_USER} --build-arg BITBUCKET_PASSWORD=${BITBUCKET_PASSWORD} ./ --file Dockerfile -t $IMAGE_NAME
+          - docker save $IMAGE_NAME | gzip > "$FILENAME.tar.gz"
+          - apt-get update && apt-get install -y openssh-client
+          - mkdir -p ~/.ssh && echo "$MY_SSH_KEY" | base64 -d > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
+          - cat ~/.ssh/id_rsa
+          - ssh-keyscan -p $SERVER_SSH_PORT -H "$SERVER_IP" >> ~/.ssh/known_hosts
+          - rsync -avz -e "ssh -p $SERVER_SSH_PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" "$FILENAME.tar.gz" "${SERVER_USERNAME}@${SERVER_IP}:$IMAGE_PATH"
+          - pipe: atlassian/ssh-run:0.8.1
+            variables:
+              SSH_USER: $MY_SSH_USER
+              SSH_KEY: $MY_SSH_KEY
+              SERVER: $SERVER_IP
+              PORT: $SERVER_SSH_PORT
+              COMMAND: bitbucket-pipelines.sh
+              MODE: 'script'
+              ENV_VARS: >-
+                BITBUCKET_USER=${BITBUCKET_USER}
+                BITBUCKET_PASSWORD=${BITBUCKET_PASSWORD}
+                SERVICE_NAME=${SERVICE_NAME}
+                BITBUCKET_BUILD_NUMBER=${BITBUCKET_BUILD_NUMBER}
+                CONTAINER_NAME=${CONTAINER_NAME}
+                SERVICE_PORT=${SERVICE_PORT}
+                CONFIG_FOLDER_PATH=${CONFIG_FOLDER_PATH}
+                CONFIG_REPO_FILE_PATH=${CONFIG_REPO_FILE_PATH}
+                CONFIG_FILE_NAME=${CONFIG_FILE_NAME}
+                BITBUCKET_COMMIT=${BITBUCKET_COMMIT}
+
+    - step: &fe-build-and-push
+        name: fe build and push image
+        runs-on:
+          - 'self.hosted'
+          - 'linux.arm64'
+        services:
+          - docker
+        script:
+          - cd panel
+          - IMAGE_NAME="$SERVICE_NAME:$BITBUCKET_BUILD_NUMBER"
+          - FILENAME="$SERVICE_NAME-$BITBUCKET_BUILD_NUMBER"
+          - IMAGE_PATH="/home/$SERVER_USERNAME/.images/" # image path in server
+          - SHORT_COMMIT=${BITBUCKET_COMMIT::7}
+          - echo "Building image $IMAGE_NAME with filename $FILENAME"
+          - docker build --build-arg COMMIT_HASH=${SHORT_COMMIT} --build-arg CONFIG_FILE=${CONFIG_FILE} ./ --file Dockerfile -t $IMAGE_NAME
+          - docker save $IMAGE_NAME | gzip > "$FILENAME.tar.gz"
+          - apt-get update && apt-get install -y openssh-client
+          - mkdir -p ~/.ssh && echo "$MY_SSH_KEY" | base64 -d > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
+          - cat ~/.ssh/id_rsa
+          - ssh-keyscan -H -p "$SERVER_SSH_PORT" "$SERVER_IP" >> ~/.ssh/known_hosts
+          - rsync -avz -e "ssh -p $SERVER_SSH_PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" "$FILENAME.tar.gz" "${SERVER_USERNAME}@${SERVER_IP}:$IMAGE_PATH"
+          - pipe: atlassian/ssh-run:0.8.1
+            variables:
+              SSH_USER: $MY_SSH_USER
+              SSH_KEY: $MY_SSH_KEY
+              SERVER: $SERVER_IP
+              PORT: $SERVER_SSH_PORT
+              COMMAND: bitbucket-pipelines.sh
+              MODE: 'script'
+              ENV_VARS: >-
+                BITBUCKET_USER=${BITBUCKET_USER}
+                BITBUCKET_PASSWORD=${BITBUCKET_PASSWORD}
+                SERVICE_NAME=${SERVICE_NAME}
+                BITBUCKET_BUILD_NUMBER=${BITBUCKET_BUILD_NUMBER}
+                CONTAINER_NAME=${CONTAINER_NAME}
+                SERVICE_PORT=${SERVICE_PORT}
+                BITBUCKET_COMMIT=${BITBUCKET_COMMIT}
+pipelines:
+  pull-requests:
+    "staging":
+        - step:
+            <<: *be_lint_and_test
+        - step:
+            <<: *fe_lint_and_test
+
+  tags:
+    v*:
+      - step:
+          <<: *be-build-and-push
+          name: be build and deploy
+          deployment: prd
+
+  branches:
+    main:
+      - stage:
+          name: deploying to prd
+          steps:
+            - step:
+                <<: *fe-build-and-push
+                deployment: fe-prd
+                name: deploying panel service
+            - step:
+                <<: *be-build-and-push
+                deployment: prd
+                name: deploying backend service
+            - step:
+                <<: *notify-slack
+                name: notify in slack
