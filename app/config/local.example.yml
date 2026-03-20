@@ -1,6 +1,6 @@
 ServerPort: 4441
 GrpcPort: 4442
-AppName: "ontology_bot"
+AppName: "ontology"
 AppVersion: "0.0.1"
 BaseUrl: "http://localhost:4441"
 OtlpExporterUrl: "localhost:4318"
@@ -13,12 +13,8 @@ Redis:
   tls_enabled: false
 
 Database:
-  master_database_dsn: "postgres://kellyuser:kellypassword@localhost:5432/ontology_bot?sslmode=disable"
-  slave_database_dsn: "postgres://kellyuser:kellypassword@localhost:5432/ontology_bot?sslmode=disable"
-
-ClickHouse:
-  enabled: false
-  dsn: ""
+  master_database_dsn: "postgres://USERNAME:PASSWORD@localhost:5432/ontology?sslmode=disable"
+  slave_database_dsn: "postgres://USERNAME:PASSWORD@localhost:5432/ontology?sslmode=disable"
 
 Notification:
   protocol: "grpc" # grpc, http 
@@ -27,3 +23,7 @@ Notification:
 
 FeatureFlag:
   audit_log: true
+
+ClickHouse:
+  enabled: true
+  dsn: "tcp://clickhouse:clickhouse@localhost:9000/ontology?dial_timeout=5s&read_timeout=10s"

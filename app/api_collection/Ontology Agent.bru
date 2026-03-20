@@ -1,0 +1,21 @@
+meta {
+  name: Ontology Agent
+  type: ws
+  seq: 4
+}
+
+ws {
+  url: http://localhost:4441/agent/v1/ontology/summary
+  body: ws
+  auth: inherit
+}
+
+body:ws {
+  name: message 1
+  type: json
+  content: '''
+    {
+      prompt: "Send me teams summary"
+    }
+  '''
+}

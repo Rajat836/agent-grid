@@ -1,18 +1,17 @@
 package app
 
 import (
-	"app/ontology_bot/internal/controllers"
+	"app/agent_grid/cmd/app/middlewares"
 
 	"github.com/gin-gonic/gin"
 )
 
-func registerHealthRoutes(engine *gin.Engine, version string) {
-	healthController := controllers.NewHealthController(version)
-
+func (app *App) addBaseRoutes(router *gin.Engine, middlewares *middlewares.Middlewares) {
 	// Public routes - no authentication required
-	public := engine.Group("/ontology_bot/v1")
+	public := router.Group("/agent/v1")
 	{
-		public.GET("/health", healthController.Health)
-		public.GET("/health/ready", healthController.Readiness)
+		public.GET("/health", app.controllers.Health.Health)
+		public.GET("/health/ready", app.controllers.Health.Readiness)
+		public.GET("/ontology/summary", app.controllers.Health.OntologySummary)
 	}
 }

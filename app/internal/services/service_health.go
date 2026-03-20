@@ -1,54 +1,58 @@
 package services
 
 import (
+	globaltypes "app/agent_grid/internal/global_types"
+	"app/agent_grid/internal/response"
 	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 // ServiceHealthMethods defines the interface for health service
 type ServiceHealthMethods interface {
 	GetHealth() *HealthCheckResponse
 	GetReadiness() *ReadinessResponse
+	GetOntologySummary(conn *websocket.Conn, req *globaltypes.RequestOntologySummary) *globaltypes.ResponseOntologySummary
 }
 
-// HealthCheckResponse contains health information
-type HealthCheckResponse struct {
-	Status    string    `json:"status"`
-	Timestamp time.Time `json:"timestamp"`
-	Version   string    `json:"version"`
+type ServiceHealth struct {
+	Access *ServiceAccess
 }
 
-// ReadinessResponse contains readiness information
-type ReadinessResponse struct {
-	Ready     bool      `json:"ready"`
-	Timestamp time.Time `json:"timestamp"`
-}
-
-// healthService implements ServiceHealthMethods
-type healthService struct {
-	version string
-}
-
-// NewHealthService creates a new health service
-func NewHealthService(version string) ServiceHealthMethods {
-	return &healthService{
-		version: version,
+func NewServiceHealth(access *ServiceAccess) ServiceHealthMethods {
+	return &ServiceHealth{
+		Access: access,
 	}
 }
 
 // GetHealth returns the current health status
-func (s *healthService) GetHealth() *HealthCheckResponse {
+func (s *ServiceHealth) GetHealth() *HealthCheckResponse {
 	return &HealthCheckResponse{
 		Status:    "healthy",
 		Timestamp: time.Now(),
-		Version:   s.version,
 	}
 }
 
 // GetReadiness returns the readiness status
-func (s *healthService) GetReadiness() *ReadinessResponse {
+func (s *ServiceHealth) GetReadiness() *ReadinessResponse {
 	// TODO: Add database and external service connectivity checks here
 	return &ReadinessResponse{
 		Ready:     true,
 		Timestamp: time.Now(),
 	}
+}
+
+// GetOntologySummary returns a dummy ontology summary
+func (s *ServiceHealth) GetOntologySummary(conn *websocket.Conn, req *globaltypes.RequestOntologySummary) *globaltypes.ResponseOntologySummary {
+	response.SendWebSocketMessage(conn, response.WebsocketMessageTypeInfo, "Getting LLM Response...", nil)
+
+	// Simulate processing time
+	time.Sleep(4 * time.Second)
+
+	// Return a dummy response for now
+	// md format payload
+	payload := "## Ontology Summary\n\n- **Entity Count**: 100\n- **Edge Count**: 200\n- **Last Updated**: " + time.Now().Format(time.RFC1123)
+	response.SendWebSocketMessage(conn, response.WebsocketMessageTypeLastUpdate, "Last Response", payload)
+
+	return nil
 }

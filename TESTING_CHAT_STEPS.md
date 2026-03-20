@@ -5,12 +5,14 @@ This guide explains how to test the chat functionality with agent steps display.
 ## Current Status
 
 ✅ **Frontend**: Fully implemented with:
+
 - Chat window for user inputs
 - Steps display component
 - Proper state management
 - Integration ready
 
 ❌ **Backend**: Endpoint not yet implemented
+
 - Endpoint: `POST /ontology_bot/v1/analysis/query`
 - Status: Needs implementation
 
@@ -36,7 +38,8 @@ const mockSteps: LLMStep[] = [
     status: "completed",
     startTime: Date.now() - 5000,
     endTime: Date.now() - 4500,
-    details: "Query parsed successfully. Intent: user is asking about system performance.",
+    details:
+      "Query parsed successfully. Intent: user is asking about system performance.",
   },
   {
     id: "step-2",
@@ -189,6 +192,7 @@ NEXT_PUBLIC_USE_MOCK_DATA=true
 ### Step 4: Test It
 
 1. Run the frontend:
+
 ```bash
 cd panel
 npm run dev
@@ -258,7 +262,7 @@ package controllers
 import (
     "net/http"
     "github.com/gin-gonic/gin"
-    typesanalysis "app/ontology/internal/types/analysis"
+    typesanalysis "app/agent_grid/internal/types/analysis"
     "time"
     "fmt"
 )
@@ -383,18 +387,21 @@ func setupRoutes(router *gin.Engine) {
 ### Step 6: Test with Backend
 
 1. Start the backend:
+
 ```bash
 cd app
 make run
 ```
 
 2. Update `.env.local`:
+
 ```
 NEXT_PUBLIC_USE_MOCK_DATA=false
 NEXT_PUBLIC_API_HOST=http://localhost:4441
 ```
 
 3. Start the frontend:
+
 ```bash
 cd panel
 npm run dev
@@ -426,12 +433,13 @@ npm run dev
 ## Recommended Testing Path
 
 **For immediate testing:**
+
 1. Use Option 1 (Mock Data) - takes 5 minutes ⚡
 2. Test all features
 3. Check visual appearance
 
 **For production:**
+
 1. Implement Option 2 (Backend Endpoint)
 2. Test with real data
 3. Deploy
-

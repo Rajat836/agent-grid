@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -8,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"app/ontology_bot/internal/config"
+	"app/agent_grid/internal/config"
 
 	"github.com/google/uuid"
 	"gorm.io/driver/clickhouse"
@@ -338,7 +339,10 @@ const (
 // --- Main Function ---
 
 func main() {
-	cfg, err := config.Load()
+	var flagConfig = flag.String("config", "./config/local.yml", "path to the config file")
+	flag.Parse()
+
+	cfg, err := config.Load(*flagConfig)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}

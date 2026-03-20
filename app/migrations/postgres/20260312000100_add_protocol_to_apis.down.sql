@@ -1,0 +1,1 @@
+ALTER TABLE apis DROP COLUMN IF EXISTS protocol;
