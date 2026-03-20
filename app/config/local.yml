@@ -13,8 +13,8 @@ Redis:
   tls_enabled: false
 
 Database:
-  master_database_dsn: "postgres://USERNAME:PASSWORD@localhost:5432/ontology?sslmode=disable"
-  slave_database_dsn: "postgres://USERNAME:PASSWORD@localhost:5432/ontology?sslmode=disable"
+  master_database_dsn: "postgres://kellyuser:kellypassword@localhost:5432/ontology?sslmode=disable"
+  slave_database_dsn: "postgres://kellyuser:kellypassword@localhost:5432/ontology?sslmode=disable"
 
 Notification:
   protocol: "grpc" # grpc, http 
