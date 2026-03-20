@@ -14,27 +14,35 @@ type Pagination struct {
 }
 
 type APIConfig struct {
-	Host     string            `json:"host"`
+	Host     ServiceHost            `json:"host"`
 	Method   networks.Method   `json:"method"`
 	Endpoint string            `json:"endpoint"`
 	Headers  map[string]string `json:"headers"`
 }
 
-type Action struct {
-	Name         string   `json:"name"`
-	Title        string   `json:"title"`
-	Description  string   `json:"description"`
-	UserExamples []string `json:"user_examples"`
-	ResponseJSON string   `json:"response_json"`
-	Notes        string   `json:"notes,omitempty"`
-
-	// 🔥 NEW
-	Filters    []FilterParam `json:"filters,omitempty"`
-	Pagination bool          `json:"pagination_supported"`
-
-	API APIConfig `json:"api"`
+type Param struct {
+	Key         string
+	Type        string
+	Required    bool
+	Description string
+	Example     string
 }
 
+type Action struct {
+	Name         ActionName
+	Title        string
+	Description  string
+	UserExamples []string
+
+	PathParams  []Param
+	QueryParams []Param
+	BodyParams  []Param
+
+	Pagination bool
+
+	ResponseJSON string
+	API          APIConfig
+}
 type DecisionConfig struct {
 	SystemInstruction string   `json:"system_instruction"`
 	Actions           []Action `json:"actions"`

@@ -48,76 +48,127 @@ func (s *ServiceHealth) GetReadiness() *ReadinessResponse {
 	}
 }
 
-// GetOntologySummary returns a dummy ontology summary
 func (s *ServiceHealth) GetOntologySummary(conn *websocket.Conn, req *globaltypes.RequestOntologySummary) *globaltypes.ResponseOntologySummary {
-	var (
-		logger  = s.Access.Logger
-		clients = s.Access.Clients
+	logger := s.Access.Logger
+	clients := s.Access.Clients
+
+	response.SendWebSocketMessage(conn, response.WebsocketMessageTypeStart, "Thinking...", nil)
+
+	// =========================
+	// 1. FILTER ACTIONS
+	// =========================
+	filteredActions := agent_config.FilterActions(req.Prompt)
+	llmActions := agent_config.ToLLMActions(filteredActions)
+
+	// =========================
+	// 2. PLANNER PROMPT
+	// =========================
+	plannerPrompt := agent_config.BuildPlannerPrompt(req.Prompt, llmActions)
+
+	plannerResp, err := clients.ClientOllama.GenerateResponse(plannerPrompt)
+	if err != nil {
+		logger.Error("Planner error: %v", err)
+		response.SendWebSocketMessage(conn, response.WebsocketMessageTypeError, "Planner failed", err.Error())
+		return nil
+	}
+
+	var plan agent_config.Plan
+	a, _ := json.Marshal(plannerResp)
+	fmt.Println(string(a))
+	err = json.Unmarshal(a, &plan)
+	if err != nil {
+		logger.Error("Planner error: %v", err)
+		response.SendWebSocketMessage(conn, response.WebsocketMessageTypeError, "Failed to parse plan", err.Error())
+		return nil
+	}
+
+	if len(plan.Plan) == 0 {
+		response.SendWebSocketMessage(conn, response.WebsocketMessageTypeError, "No plan generated", nil)
+		return nil
+	}
+
+	response.SendWebSocketMessage(conn, response.WebsocketMessageTypeInfo, "Plan Generated", plan)
+
+	// =========================
+	// 3. EXECUTION LOOP
+	// =========================
+	var stepResults []any
+
+	for _, step := range plan.Plan {
+
+		action, ok := agent_config.OntologyAgentActionsList[agent_config.ActionName(step.Action)]
+		if !ok {
+			continue
+		}
+
+		response.SendWebSocketMessage(conn, response.WebsocketMessageTypeInfo,
+			fmt.Sprintf("Executing: %s", step.Action), step.Reason)
+
+		// NOTE: currently empty params (LLM can be extended later to send params)
+		apiResp, err := clients.ClientGeneral.SendRequestByAgent(
+			context.Background(),
+			&action,
+			action.API.Headers,
+			nil,
+			nil,
+		)
+
+		if err != nil {
+			logger.Error("API error: %v", err)
+			continue
+		}
+
+		stepResults = append(stepResults, apiResp)
+		response.SendWebSocketMessage(conn,
+			response.WebsocketMessageTypeInfo,
+			fmt.Sprintf("Step %d done", step.Step),
+			apiResp,
+		)
+	}
+
+	// =========================
+	// 4. FINAL SUMMARY
+	// =========================
+	var stepResultsStr []string
+	for _, res := range stepResults {
+		stepResultsStr = append(stepResultsStr, fmt.Sprint(res))
+	}
+
+	finalPrompt := fmt.Sprintf(`
+User Query:
+%s
+
+Step Results:
+%s
+
+Provide final concise markdown summary.
+`, req.Prompt, strings.Join(stepResultsStr, "\n"))
+
+	response.SendWebSocketMessage(conn,
+		response.WebsocketMessageTypeInfo,
+		"Summarising final response...",
+		nil,
 	)
 
-	response.SendWebSocketMessage(conn, response.WebsocketMessageTypeStart, "Getting LLM Response...", nil)
-
-	prompt, _ := clients.ClientOllama.BuildSysPrompt(req.Prompt)
-	resp, err := clients.ClientOllama.GenerateResponse(prompt)
+	finalResp, err := clients.ClientOllama.GenerateResponse(finalPrompt)
 	if err != nil {
-		logger.Error("Error getting ontology summary from Ollama: %v", err)
-		response.SendWebSocketMessage(conn, response.WebsocketMessageTypeError, "Error getting ontology summary", err.Error())
+		logger.Error("Final summary error: %v", err)
 		return nil
 	}
 
-	// Send the LLM response back to the client
-	response.SendWebSocketMessage(conn, response.WebsocketMessageTypeInfo, "LLM Response", resp)
+	response.SendWebSocketMessage(conn,
+		response.WebsocketMessageTypeLastUpdate,
+		"Final Response",
+		ConvertEscapedToMarkdown(finalResp.Data),
+	)
 
-	action, ok := agent_config.OntologyAgentActionsList[resp.Action]
-	if !ok {
-		logger.Error("Unknown action from LLM response: %s", resp.Action)
-		response.SendWebSocketMessage(conn, response.WebsocketMessageTypeError, "Unknown action in LLM response", resp.Action)
-		return nil
-	}
-
-	clientResp, err := clients.ClientGeneral.SendRequestByAgent(context.Background(), &action, action.API.Headers, resp.Data, resp.Filters)
-	if err != nil {
-		logger.Error("Error getting ontology summary from OntologyBot: %v", err)
-		response.SendWebSocketMessage(conn, response.WebsocketMessageTypeError, "Error processing ontology summary", err.Error())
-		return nil
-	}
-
-	newPrompt := fmt.Sprintf(`
-You are an AI assistant.
-Given the following API response data for %s:
-%s
-Summarize this information in a concise and user-friendly manner in markdown format.
-Highlight key details and any important statuses or outcomes.
-
-User's Instructions for this data:
-%s
-`, action.Name, clientResp, req.Prompt)
-
-	clientResp2, err := clients.ClientOllama.GenerateResponse(newPrompt)
-	if err != nil {
-		logger.Error("Error summarizing ontology summary from Ollama: %v", err)
-		response.SendWebSocketMessage(conn, response.WebsocketMessageTypeError, "Error summarizing ontology summary", err.Error())
-		return nil
-	}
-
-	var result string
-	err = json.Unmarshal([]byte(fmt.Sprint(clientResp2.Data)), &result)
-	if err != nil {
-	}
-
-	response.SendWebSocketMessage(conn, response.WebsocketMessageTypeLastUpdate, "OntologyBot Response", ConvertEscapedToMarkdown(clientResp2.Data))
 	return nil
 }
 
 func ConvertEscapedToMarkdown(input any) string {
-	// Step 1: Unquote the string (handles \" and \\n etc.)
-	unquoted, err := strconv.Unquote(fmt.Sprint(input))
+	s, err := strconv.Unquote(fmt.Sprint(input))
 	if err != nil {
-		return err.Error()
+		return fmt.Sprint(input)
 	}
-
-	// Step 2: Normalize newlines (optional safety)
-	unquoted = strings.ReplaceAll(unquoted, "\r\n", "\n")
-
-	return unquoted
+	return strings.ReplaceAll(s, "\r\n", "\n")
 }
