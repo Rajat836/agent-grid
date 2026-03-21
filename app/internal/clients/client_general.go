@@ -42,14 +42,12 @@ func (cu *ClientGeneral) SendRequestByAgent(ctx context.Context, action *agent_c
 		queryParamsStr[k] = fmt.Sprint(v)
 	}
 
-
 	payload := &networks.ApiPayload{
-		Url:        fmt.Sprintf("%s/%s", apiConfig.Host, apiConfig.Endpoint),
-		Method:     apiConfig.Method,
-		Headers:    headers,
-		QueryParams: queryParamsStr,
-		Body:       req,
-		JsonObject: &responseData,
+		Url:         fmt.Sprintf("%s/%s", apiConfig.Host, apiConfig.Endpoint),
+		Method:      apiConfig.Method,
+		Headers:     headers,
+		Body:        req,
+		JsonObject:  &responseData,
 	}
 
 	logger.Infof("sending request to %s with payload: %+v", payload.Url, payload.Body, payload.Headers, payload.Method)
@@ -58,6 +56,8 @@ func (cu *ClientGeneral) SendRequestByAgent(ctx context.Context, action *agent_c
 		logger.Errorf("error sending request: %v", reqErr)
 		return nil, reqErr
 	}
+
+	logger.Infof("received response: %+v", string(resp.Data))
 
 	return string(resp.Data), nil
 }

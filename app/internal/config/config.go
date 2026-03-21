@@ -58,24 +58,48 @@ type FeatureFlags struct {
 
 // Config represents an application configuration.
 type Config struct {
-	ServerPort      int                 `yaml:"ServerPort"`
-	GrpcPort        int                 `yaml:"GrpcPort"`
-	AppName         string              `yaml:"AppName"`
-	AppVersion      string              `yaml:"AppVersion"`
-	BaseUrl         string              `yaml:"BaseUrl"`
-	Environment     string              `yaml:"Environment"`
-	OtlpExporterUrl string              `yaml:"OtlpExporterUrl"`
-	Redis           RedisConfig         `yaml:"Redis"`
-	Database        DatabaseConfig      `yaml:"Database"`
-	Notification    ServiceClientConfig `yaml:"Notification"`
-	SQS             SQSConfig           `yaml:"SQS"`
-	ClickHouse      ClickHouseConfig    `yaml:"ClickHouse"`
-	FeatureFlags    FeatureFlags        `yaml:"FeatureFlags"`
-	Agents          AgentsConfig        `yaml:"Agents"`
+	ServerPort      int                     `yaml:"ServerPort"`
+	GrpcPort        int                     `yaml:"GrpcPort"`
+	AppName         string                  `yaml:"AppName"`
+	AppVersion      string                  `yaml:"AppVersion"`
+	BaseUrl         string                  `yaml:"BaseUrl"`
+	Environment     string                  `yaml:"Environment"`
+	OtlpExporterUrl string                  `yaml:"OtlpExporterUrl"`
+	Redis           RedisConfig             `yaml:"Redis"`
+	Database        DatabaseConfig          `yaml:"Database"`
+	Notification    ServiceClientConfig     `yaml:"Notification"`
+	SQS             SQSConfig               `yaml:"SQS"`
+	ClickHouse      ClickHouseConfig        `yaml:"ClickHouse"`
+	FeatureFlags    FeatureFlags            `yaml:"FeatureFlags"`
+	AgentConfig     map[string]AgentConfig `yaml:"AgentConfig"`
+	ModelConfig     map[string]ModelConfig  `yaml:"Agents"`
 }
 
-type AgentsConfig struct {
-	Ollama OllamaConfig `yaml:"Ollama"`
+func GetAgentForFeature(cfg *Config, feature string) (*ModelConfig, *AgentConfig, bool) {
+	featureCfg, ok := cfg.AgentConfig[feature]
+	if !ok || !featureCfg.Enabled {
+		return nil, nil, false
+	}
+
+	agent, ok := cfg.ModelConfig[featureCfg.Agent]
+	if !ok {
+		return nil, &featureCfg, false
+	}
+
+	return &agent, &featureCfg, true
+}
+
+// Feature-level config (OntologyAgent, ChatAgent, etc.)
+type AgentConfig struct {
+	Enabled bool   `yaml:"enabled"`
+	Agent   string `yaml:"Agent"`
+}
+
+// ModelConfig definition (Ollama, OpenAI, etc.)
+type ModelConfig struct {
+	URL    string `yaml:"url,omitempty"`
+	Model  string `yaml:"model,omitempty"`
+	APIKey string `yaml:"api_key,omitempty"`
 }
 
 type OllamaConfig struct {

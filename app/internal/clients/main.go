@@ -14,7 +14,7 @@ import (
 type Clients struct {
 	ClientSqs     clients.ClientSqsMethods
 	ClientGeneral ClientGeneralMethods
-	ClientOllama  AgentClientMethods
+	ClientAgent   ClientAgentMethods
 }
 
 type clientAccess struct {
@@ -39,6 +39,6 @@ func NewClients(cfg *config.Config, logger log.Logger, cacheStore db.CacheStoreM
 	return &Clients{
 		ClientSqs:     sqsClient,
 		ClientGeneral: NewClientGeneral(access),
-		ClientOllama:  NewOllamaAgentClient(access),
+		ClientAgent:   NewClientAgent(access),
 	}
 }

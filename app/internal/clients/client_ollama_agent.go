@@ -2,6 +2,7 @@ package clients
 
 import (
 	"app/agent_grid/internal/agent_config"
+	"app/agent_grid/internal/config"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -39,17 +40,12 @@ type ResponseAgentModel struct {
 	Sort string `json:"sort,omitempty"`
 }
 
-type AgentClientMethods interface {
-	GenerateResponse(prompt string) (*ResponseAgentModel, error)
-	BuildPlannerPrompt(userPrompt string, actions []agent_config.LLMAction) string
-}
-
-type OllamaAgentClient struct {
+type clientOllamaAgent struct {
 	Access *clientAccess
 }
 
-func NewOllamaAgentClient(access *clientAccess) AgentClientMethods {
-	return &OllamaAgentClient{
+func NewOllamaAgentClient(access *clientAccess) ClientAgentMethods {
+	return &clientOllamaAgent{
 		Access: access,
 	}
 }
@@ -67,18 +63,16 @@ type OllamaResponse struct {
 // =========================
 // 🔥 GENERATE RESPONSE (GENERIC)
 // =========================
-func (c *OllamaAgentClient) GenerateResponse(prompt string) (*ResponseAgentModel, error) {
+func (c *clientOllamaAgent) GenerateResponse(agentName AgentName, agentCfg *config.ModelConfig, prompt string) (*ResponseAgentModel, error) {
 	logger := c.Access.logger
-
 	reqBody := OllamaRequest{
-		Model:  "llama3",
+		Model:  agentCfg.Model,
 		Prompt: prompt,
 		Stream: false,
 	}
 
 	bodyBytes, _ := json.Marshal(reqBody)
-
-	resp, err := http.Post(c.Access.cfg.Agents.Ollama.Url, "application/json", bytes.NewBuffer(bodyBytes))
+	resp, err := http.Post(agentCfg.URL, "application/json", bytes.NewBuffer(bodyBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -116,42 +110,6 @@ func (c *OllamaAgentClient) GenerateResponse(prompt string) (*ResponseAgentModel
 	}
 
 	return &result, nil
-}
-
-// =========================
-// 🔥 PLANNER PROMPT (NEW)
-// =========================
-func (c *OllamaAgentClient) BuildPlannerPrompt(userPrompt string, actions []agent_config.LLMAction) string {
-	actionsJSON, _ := json.Marshal(actions)
-
-	return fmt.Sprintf(`
-You are an AI agent that plans API calls.
-
-User Query:
-%s
-
-Available Actions:
-%s
-
-Rules:
-- Only use provided actions
-- Prefer minimum steps
-- Use multiple steps if debugging/analysis
-- Do NOT hallucinate
-- Return ONLY JSON
-
-Output format:
-{
-  "plan": [
-    {
-      "step": 1,
-      "action": "action_name",
-      "reason": "why",
-      "depends_on": null
-    }
-  ]
-}
-`, userPrompt, string(actionsJSON))
 }
 
 // =========================

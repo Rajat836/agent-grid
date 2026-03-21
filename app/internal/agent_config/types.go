@@ -14,7 +14,7 @@ type Pagination struct {
 }
 
 type APIConfig struct {
-	Host     ServiceHost            `json:"host"`
+	Host     ServiceHost       `json:"host"`
 	Method   networks.Method   `json:"method"`
 	Endpoint string            `json:"endpoint"`
 	Headers  map[string]string `json:"headers"`
@@ -41,6 +41,7 @@ type Action struct {
 	Pagination bool
 
 	ResponseJSON string
+	IsActive     bool
 	API          APIConfig
 }
 type DecisionConfig struct {

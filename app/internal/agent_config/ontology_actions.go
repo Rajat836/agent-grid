@@ -72,12 +72,12 @@ var OntologyAgentActionsList = map[ActionName]Action{
 		UserExamples: []string{
 			"List all features",
 			"Get active features",
-			"Find feature with code CUST_ONBOARD",
+			"Find feature with code xyz",
 			"Show features created after Feb 2026",
 		},
 
 		QueryParams: []Param{
-			{"code", "string", false, "Filter by feature code", "CUST_ONBOARD"},
+			{"code", "string", false, "Filter by feature code", "xyz"},
 			{"name", "string", false, "Filter by feature name", "Customer Onboarding"},
 			{"is_active", "bool", false, "Filter active/inactive", "true"},
 			{"created_at_from", "date", false, "Start date filter", "2026-01-01"},
@@ -116,12 +116,12 @@ var OntologyAgentActionsList = map[ActionName]Action{
 		Description: "Create a new feature with code, name, description and active status. Use when user wants to add/register a new feature.",
 		UserExamples: []string{
 			"Create a new feature for onboarding",
-			"Add feature CUST_ONBOARD",
+			"Add feature xyz",
 			"Register a feature for user signup flow",
 		},
 
 		BodyParams: []Param{
-			{"code", "string", true, "Unique feature code", "CUST_ONBOARD"},
+			{"code", "string", true, "Unique feature code", "xyz"},
 			{"name", "string", true, "Feature name", "Customer Onboarding"},
 			{"description", "string", false, "Feature description", "Flow for onboarding"},
 			{"is_active", "bool", true, "Feature status", "true"},
@@ -130,7 +130,7 @@ var OntologyAgentActionsList = map[ActionName]Action{
 		ResponseJSON: `{
 "action":"create_feature",
 "body":{
-  "code":"CUST_ONBOARD",
+  "code":"xyz",
   "name":"Customer Onboarding"
 }
 }`,
@@ -154,7 +154,7 @@ var OntologyAgentActionsList = map[ActionName]Action{
 		Description: "Update an existing feature using feature_id. Use when modifying name, description or active status.",
 		UserExamples: []string{
 			"Update feature 101 name",
-			"Disable feature CUST_ONBOARD",
+			"Disable feature xyz",
 			"Change description of onboarding feature",
 		},
 
@@ -230,7 +230,7 @@ var OntologyAgentActionsList = map[ActionName]Action{
 		UserExamples: []string{
 			"Show metrics for feature 101",
 			"Get success rate of onboarding feature",
-			"Latency stats for feature CUST_ONBOARD",
+			"Latency stats for feature xyz",
 		},
 
 		PathParams: []Param{

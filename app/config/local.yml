@@ -31,3 +31,26 @@ ClickHouse:
 Agents:
   Ollama:
     url: "http://localhost:11434/api/generate"
+    model: "llama3"
+
+  OllamaCode:
+    url: "http://localhost:11434/api/generate"
+    model: "codellama"
+
+  OpenAI:
+    api_key: "YOUR_KEY"
+    model: "gpt-4o"
+    
+AgentConfig:
+  OntologyAgent:
+    enabled: true
+    Agent: Ollama
+
+  ChatAgent:
+    enabled: true
+    Agent: OpenAI
+
+  CodeAgent:
+    enabled: true
+    Agent: OllamaCode
+  

@@ -11,9 +11,10 @@ import (
 // =========================
 
 type LLMAction struct {
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Params      []string `json:"params"`
+	Name         string   `json:"name"`
+	Description  string   `json:"description"`
+	Params       []string `json:"params"`
+	UserExamples []string `json:"user_examples,omitempty"`
 }
 
 type PlanStep struct {
@@ -21,8 +22,14 @@ type PlanStep struct {
 	Action    string `json:"action"`
 	Reason    string `json:"reason"`
 	DependsOn *int   `json:"depends_on"`
-}
 
+	QueryParams map[string]any `json:"query_params"`
+	Body        map[string]any `json:"body"`
+	PathParams  map[string]any `json:"path_params"`
+
+	// Just for logging
+	Endpoint string `json:"endpoint"`
+}
 type Plan struct {
 	Plan []PlanStep `json:"plan"`
 }
@@ -137,9 +144,10 @@ func ToLLMActions(actions []Action) []LLMAction {
 		}
 
 		result = append(result, LLMAction{
-			Name:        string(a.Name),
-			Description: a.Description,
-			Params:      params,
+			Name:         string(a.Name),
+			Description:  a.Description,
+			UserExamples: a.UserExamples,
+			Params:       params,
 		})
 	}
 
@@ -162,22 +170,100 @@ User Query:
 Available Actions:
 %s
 
-Rules:
-- Use only provided actions
-- Prefer minimum steps
-- Use multiple steps if debugging/analysis
-- Return ONLY JSON
+=========================
+STRICT RULES (IMPORTANT)
+=========================
 
-Output:
+1. Use ONLY provided actions
+2. Return step-by-step plan
+3. ALWAYS include params in each step
+
+-------------------------
+PARAM USAGE RULES
+-------------------------
+
+1. query_params:
+   - ONLY for filters
+   - Example: ?code=abc
+
+2. path_params:
+   - MUST be used when endpoint contains path variables
+   - Example:
+     Endpoint: /entities/{entity_id}/apis
+     THEN:
+     "path_params": { "entity_id": 123 }
+
+   - ❌ NEVER put path params inside query_params
+
+3. body:
+   - ONLY for POST/PATCH
+
+-------------------------
+CHAINING RULES
+-------------------------
+
+- Use previous step outputs like:
+  "$1.result.id"
+  "$2.result.id[]"
+
+- If multiple IDs:
+  ALWAYS use [] (array)
+
+-------------------------
+EXAMPLES (VERY IMPORTANT)
+-------------------------
+
+Example 1:
+Action: get_entity_apis
+Endpoint: /entities/{entity_id}/apis
+
+CORRECT:
+{
+  "action": "get_entity_apis",
+  "path_params": {
+    "entity_id": "$2.result.id[]"
+  }
+}
+
+WRONG:
+{
+  "query_params": {
+    "entity_id": "$2.result.id[]"
+  }
+}
+
+-------------------------
+
+Return ONLY JSON:
+
 {
   "plan": [
     {
       "step": 1,
       "action": "action_name",
-      "reason": "why",
-      "depends_on": null
+      "query_params": {},
+      "path_params": {},
+      "body": {}
     }
   ]
 }
 `, query, string(actionsJSON))
+}
+
+func BuildSummaryPrompt(userQuery string, apiResults []string) string {
+	return fmt.Sprintf(`
+Instructions:
+- Provide concise summary based on the following API call results only.
+- Do NOT use any information outside of these results.
+- If results are empty, say "No relevant information found".
+- If the user hasn't specified format for data then use markdown tables for tabular data and JSON for non-tabular data.
+
+User Query:
+%s
+
+Step Results:
+%s
+
+Provide final concise markdown summary.
+`, userQuery, strings.Join(apiResults, "\n"))
 }
