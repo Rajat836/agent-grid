@@ -157,7 +157,7 @@ func (s *ServiceHealth) GetOntologySummary(conn *websocket.Conn, req *globaltype
 			})
 		}
 
-		var resultApiResp any
+		var resultApiResp []any
 		for _, item := range stack {
 			endpoint = item.endpoint
 
@@ -187,9 +187,9 @@ func (s *ServiceHealth) GetOntologySummary(conn *websocket.Conn, req *globaltype
 			}
 
 			resultApiResp, err = mergeResults(resultApiResp, apiResp)
-			if err != nil {
+			if err != nil || resultApiResp == nil {
 				logger.Error("Merge results error: %v", err)
-				resultApiResp = apiResp // fallback to latest result if merge fails
+				resultApiResp = append(resultApiResp, apiResp) // fallback to latest result if merge fails
 			}
 		}
 
@@ -465,16 +465,7 @@ func copyMap(m map[string]any) map[string]any {
 	return out
 }
 
-func mergeResults(r1, r2 any) (any, error) {
-	m1, err := toMap(r1)
-	if err != nil {
-		return nil, err
-	}
-
-	if m1 == nil {
-		m1 = map[string]any{}
-	}
-
+func mergeResults(r1 []any, r2 any) ([]any, error) {
 	m2, err := toMap(r2)
 	if err != nil {
 		return nil, err
@@ -486,16 +477,20 @@ func mergeResults(r1, r2 any) (any, error) {
 
 	var merged []any
 
-	if r, ok := m1["result"].([]any); ok {
+	r, ok := m2["result"].([]any)
+	if ok {
 		merged = append(merged, r...)
+	} else {
+		r, ok := m2["data"].([]any)
+		if ok {
+			merged = append(merged, r...)
+		} else {
+			fmt.Println("error merging results: no array found in either result or data")
+		}
 	}
 
-	if r, ok := m2["result"].([]any); ok {
-		merged = append(merged, r...)
-	}
-
-	m1["result"] = merged
-	return m1, nil
+	r1 = append(r1, merged...)
+	return r1, nil
 }
 
 func buildQueryParams(data map[string]any) string {

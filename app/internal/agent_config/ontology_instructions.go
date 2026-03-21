@@ -15,6 +15,7 @@ type LLMAction struct {
 	Description  string   `json:"description"`
 	Params       []string `json:"params"`
 	UserExamples []string `json:"user_examples,omitempty"`
+	RequestBody  any      `json:"request_body,omitempty"`
 }
 
 type PlanStep struct {
@@ -38,12 +39,50 @@ type Plan struct {
 // DOMAIN MAPPING
 // =========================
 
-// var DomainActionsMap = map[string][]ActionName{
-// 	"features": {GetFeatures},
-// 	"entities": {GetEntities, GetEntityMetrics},
-// 	"services": {GetServices, GetServiceDeployments},
-// 	"apis":     {GetAPIs, GetAPIMetrics},
-// }
+var DomainActionsMap = map[string][]ActionName{
+	"features": {
+		GetFeatures,
+		// CreateFeature,
+		// UpdateFeature,
+		// GetFeatureInstances,
+		// GetFeatureMetrics,
+	},
+	"entities": {
+		GetEntities,
+		CreateEntity,
+		UpdateEntity,
+		GetEntityMetrics,
+		GetEntityAPIs,
+		// GetEntityTransitions,
+		// CreateEntityTransition,
+		// UpdateEntityTransition,
+	},
+	"services": {
+		GetServices,
+		// UpdateService,
+		// AssignServiceTeam,
+		// GetServiceDeployments,
+	},
+	"teams": {
+		GetTeams,
+		// CreateTeam,
+		// UpdateTeam,
+		// GetTeamsByFeature,
+	},
+	"apis": {
+		GetAPIs,
+		// UpdateAPI,
+		GetAPIMetrics,
+	},
+	"kpis": {
+		GetKPIs,
+		// CreateKPI,
+		// UpdateKPI,
+		GetKPIRelationships,
+		// CreateKPIRelationship,
+		// UpdateKPIRelationship,
+	},
+}
 
 // =========================
 // FILTERING
@@ -81,6 +120,7 @@ func DetectDomains(query string) []string {
 }
 
 func createDomainActionMap() map[string][]ActionName {
+	return DomainActionsMap
 	domainActionMap := make(map[string][]ActionName)
 
 	for actionName, action := range OntologyAgentActionsList {
@@ -148,6 +188,7 @@ func ToLLMActions(actions []Action) []LLMAction {
 			Description:  a.Description,
 			UserExamples: a.UserExamples,
 			Params:       params,
+			RequestBody:  a.BodyParams,
 		})
 	}
 
@@ -256,6 +297,7 @@ Instructions:
 - Provide concise summary based on the following API call results only.
 - Do NOT use any information outside of these results.
 - If results are empty, say "No relevant information found".
+- Use all the results to provide comprehensive summary. Do NOT ignore any result.
 - If the user hasn't specified format for data then use markdown tables for tabular data and JSON for non-tabular data.
 
 User Query:
