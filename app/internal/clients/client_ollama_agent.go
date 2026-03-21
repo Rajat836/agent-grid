@@ -51,9 +51,10 @@ func NewOllamaAgentClient(access *clientAccess) ClientAgentMethods {
 }
 
 type OllamaRequest struct {
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
-	Stream bool   `json:"stream"`
+	Model   string         `json:"model"`
+	Prompt  string         `json:"prompt"`
+	Stream  bool           `json:"stream"`
+	Options map[string]any `json:"options,omitempty"`
 }
 
 type OllamaResponse struct {
@@ -69,6 +70,9 @@ func (c *clientOllamaAgent) GenerateResponse(agentName AgentName, agentCfg *conf
 		Model:  agentCfg.Model,
 		Prompt: prompt,
 		Stream: false,
+		Options: map[string]any{
+			"num_ctx": 8192,
+		},
 	}
 
 	bodyBytes, _ := json.Marshal(reqBody)
