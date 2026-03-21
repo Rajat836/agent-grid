@@ -16,6 +16,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Config } from "@/base/config";
+import { markdownComponents } from "@/components/markdown-components";
 
 const samplePrompts = [
   "Give me list of services",
@@ -116,12 +117,12 @@ function MarkdownContent({ content }) {
               <table {...props} />
             </div>
           ),
-          code: ({ inline, children, ...props }) =>
-            inline
-              ? <code {...props}>{children}</code>
-              : <pre>
-                  <code {...props}>{children}</code>
-                </pre>,
+          code: ({ className, children, ...props }) =>
+            markdownComponents.code({
+              className,
+              children,
+              ...props,
+            }),
           strong: ({ ...props }) => <strong {...props} />,
           em: ({ ...props }) => <em {...props} />,
         }}
@@ -973,6 +974,36 @@ Error details: ${event.message || event.type || "Unknown error"}
         .ontology-markdown pre code {
           background: transparent;
           padding: 0;
+        }
+
+        .ontology-markdown .mermaid-shell {
+          margin: 14px 0;
+          overflow-x: auto;
+          border-radius: 12px;
+          border: 1px solid rgba(255, 255, 255, 0.06);
+          background:
+            radial-gradient(circle at top, rgba(139, 92, 246, 0.12), transparent 45%),
+            rgba(2, 6, 23, 0.72);
+          padding: 16px;
+        }
+
+        .ontology-markdown .mermaid-diagram {
+          display: flex;
+          min-width: fit-content;
+          justify-content: center;
+        }
+
+        .ontology-markdown .mermaid-diagram svg {
+          max-width: none;
+          height: auto;
+        }
+
+        .ontology-markdown .mermaid-error {
+          margin: 14px 0;
+          border-radius: 12px;
+          border: 1px solid rgba(251, 113, 133, 0.3);
+          background: rgba(127, 29, 29, 0.22);
+          padding: 16px;
         }
       `}</style>
 
