@@ -1,4 +1,4 @@
-# Ontology AI Agent – LLM-Driven API Orchestration
+# Ontology Agent – LLM-Driven API Orchestration
 
 ```mermaid
 sequenceDiagram

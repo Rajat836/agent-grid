@@ -1,10 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Config } from "@/base/config";
 import {
   BookOpen,
   Check,
@@ -16,18 +11,38 @@ import {
   Send,
   Sparkles,
 } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Config } from "@/base/config";
 
 const samplePrompts = [
-  "Analyze the checkout latency regression after the latest deploy.",
-  "Summarize reliability risks across payment, pricing, and gateway services.",
+  "Give me list of services",
+  "Give me list of teams",
+  "List all entities under customer onboarding flow",
+  "Give me list of api's under set password entity",
 ];
 
-const suggestionPrompts = ["system analysis", "ontology summary"];
-
 const navItems = [
-  { label: "System Analysis", href: "/system-analysis", icon: Sparkles, active: true },
-  { label: "Knowledge Graph", href: "/knowledge-graph", icon: Network, active: false },
-  { label: "Documentation", href: "/documentation", icon: BookOpen, active: false },
+  {
+    label: "Ontology Agent",
+    href: "/system-analysis",
+    icon: Sparkles,
+    active: true,
+  },
+  {
+    label: "Knowledge Graph",
+    href: "/knowledge-graph",
+    icon: Network,
+    active: false,
+  },
+  {
+    label: "Documentation",
+    href: "/documentation",
+    icon: BookOpen,
+    active: false,
+  },
 ];
 
 function cn(...classes) {
@@ -36,7 +51,8 @@ function cn(...classes) {
 
 function getSummaryWebSocketUrl() {
   const baseUrl =
-    Config.apiHost || (typeof window !== "undefined" ? window.location.origin : "");
+    Config.apiHost ||
+    (typeof window !== "undefined" ? window.location.origin : "");
 
   if (!baseUrl) {
     return "";
@@ -45,6 +61,31 @@ function getSummaryWebSocketUrl() {
   const url = new URL("/agent/v1/ontology/summary", baseUrl);
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   return url.toString();
+}
+
+function formatEmailSection(title, content) {
+  return `${title}\n${"=".repeat(title.length)}\n${content}`.trim();
+}
+
+function formatEmailPayload(payload) {
+  if (!payload) {
+    return "No response body was returned for this analysis.";
+  }
+
+  if (typeof payload !== "string") {
+    return JSON.stringify(payload, null, 2);
+  }
+
+  const trimmedPayload = payload.trim();
+  if (!trimmedPayload) {
+    return "No response body was returned for this analysis.";
+  }
+
+  try {
+    return JSON.stringify(JSON.parse(trimmedPayload), null, 2);
+  } catch {
+    return trimmedPayload;
+  }
 }
 
 function HexLogo() {
@@ -76,13 +117,11 @@ function MarkdownContent({ content }) {
             </div>
           ),
           code: ({ inline, children, ...props }) =>
-            inline ? (
-              <code {...props}>{children}</code>
-            ) : (
-              <pre>
-                <code {...props}>{children}</code>
-              </pre>
-            ),
+            inline
+              ? <code {...props}>{children}</code>
+              : <pre>
+                  <code {...props}>{children}</code>
+                </pre>,
           strong: ({ ...props }) => <strong {...props} />,
           em: ({ ...props }) => <em {...props} />,
         }}
@@ -105,9 +144,11 @@ function ShimmerCard() {
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-[0.24em] text-[rgba(255,255,255,0.35)]">
-                Ontology AI
+                Ontology Agent
               </div>
-              <div className="text-sm font-medium text-[#e2e8f0]">Generating report</div>
+              <div className="text-sm font-medium text-[#e2e8f0]">
+                Generating report
+              </div>
             </div>
           </div>
           <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] text-[rgba(255,255,255,0.35)]">
@@ -129,7 +170,7 @@ function ShimmerCard() {
   );
 }
 
-function RingsEmptyState({ onPick }) {
+function RingsEmptyState() {
   return (
     <div className="flex min-h-[260px] flex-col items-center justify-center px-6 text-center">
       <div className="relative flex h-28 w-28 items-center justify-center">
@@ -139,19 +180,7 @@ function RingsEmptyState({ onPick }) {
         <span className="relative z-10 h-3 w-3 rounded-full bg-[#a78bfa] shadow-[0_0_22px_rgba(167,139,250,0.7)]" />
       </div>
       <div className="mt-6 text-sm text-[rgba(255,255,255,0.35)]">
-        Ask Ontology AI to inspect your system behavior and summarize the graph.
-      </div>
-      <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-        {suggestionPrompts.map((prompt) => (
-          <button
-            key={prompt}
-            type="button"
-            onClick={() => onPick(prompt)}
-            className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-[#e2e8f0] transition hover:border-[rgba(167,139,250,0.4)] hover:bg-[rgba(167,139,250,0.08)]"
-          >
-            {prompt}
-          </button>
-        ))}
+        Ask Ontology Agent about services, teams, features, entities, and APIs.
       </div>
     </div>
   );
@@ -172,15 +201,13 @@ function StepCard({ step, index, state, onToggle }) {
     >
       <div className="absolute left-[15px] top-0 h-full w-[2px] rounded-full bg-[linear-gradient(180deg,rgba(167,139,250,0.7),rgba(34,211,238,0.35))]" />
       <div className="absolute left-0 top-5 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-white/8 bg-[#0f1020]">
-        {state === "done" ? (
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(110,231,183,0.14)] text-[#6ee7b7]">
-            <Check className="h-3.5 w-3.5" />
-          </span>
-        ) : state === "active" ? (
-          <span className="h-4 w-4 rounded-full border-2 border-transparent border-t-[#a78bfa] animate-spin" />
-        ) : (
-          <span className="h-2.5 w-2.5 rounded-full bg-[rgba(255,255,255,0.24)]" />
-        )}
+        {state === "done"
+          ? <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(110,231,183,0.14)] text-[#6ee7b7]">
+              <Check className="h-3.5 w-3.5" />
+            </span>
+          : state === "active"
+            ? <span className="h-4 w-4 rounded-full border-2 border-transparent border-t-[#a78bfa] animate-spin" />
+            : <span className="h-2.5 w-2.5 rounded-full bg-[rgba(255,255,255,0.24)]" />}
       </div>
 
       <button
@@ -189,7 +216,7 @@ function StepCard({ step, index, state, onToggle }) {
         className={cn(
           "glass-panel w-full rounded-[14px] px-4 py-4 text-left transition",
           state === "active" &&
-            "border-[rgba(167,139,250,0.3)] shadow-[0_0_20px_rgba(139,92,246,0.08)]"
+            "border-[rgba(167,139,250,0.3)] shadow-[0_0_20px_rgba(139,92,246,0.08)]",
         )}
       >
         <div className="flex items-start justify-between gap-3">
@@ -197,7 +224,9 @@ function StepCard({ step, index, state, onToggle }) {
             <div
               className={cn(
                 "text-[13px] font-medium",
-                state === "active" ? "text-[#e2e8f0]" : "text-[rgba(255,255,255,0.4)]"
+                state === "active"
+                  ? "text-[#e2e8f0]"
+                  : "text-[rgba(255,255,255,0.4)]",
               )}
             >
               {step.message}
@@ -207,15 +236,17 @@ function StepCard({ step, index, state, onToggle }) {
             </div>
           </div>
           <div className="font-['JetBrains_Mono',monospace] text-[10px] text-[rgba(255,255,255,0.2)]">
-            {step.elapsedMs != null ? `${(step.elapsedMs / 1000).toFixed(2)}s` : "--"}
+            {step.elapsedMs != null
+              ? `${(step.elapsedMs / 1000).toFixed(2)}s`
+              : "--"}
           </div>
         </div>
 
-        {step.expanded ? (
-          <pre className="mt-4 overflow-x-auto rounded-[12px] border border-white/6 bg-[rgba(0,0,0,0.4)] p-3 font-['JetBrains_Mono',monospace] text-[11px] leading-5 text-[rgba(255,255,255,0.45)]">
-            <code>{formatPayload(step.payload)}</code>
-          </pre>
-        ) : null}
+        {step.expanded
+          ? <pre className="mt-4 overflow-x-auto rounded-[12px] border border-white/6 bg-[rgba(0,0,0,0.4)] p-3 font-['JetBrains_Mono',monospace] text-[11px] leading-5 text-[rgba(255,255,255,0.45)]">
+              <code>{formatPayload(step.payload)}</code>
+            </pre>
+          : null}
       </button>
     </div>
   );
@@ -230,7 +261,6 @@ export default function SystemAnalysisPage() {
   const [analysisStartedAt, setAnalysisStartedAt] = useState(null);
   const [analysisFinishedAt, setAnalysisFinishedAt] = useState(null);
   const [copiedRunId, setCopiedRunId] = useState(null);
-  const [emailDrafts, setEmailDrafts] = useState({});
   const [emailFeedback, setEmailFeedback] = useState({});
   const [now, setNow] = useState(Date.now());
   const socketRef = useRef(null);
@@ -248,7 +278,7 @@ export default function SystemAnalysisPage() {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
-  }, [runs, steps.length]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -274,7 +304,7 @@ export default function SystemAnalysisPage() {
         expanded: false,
         endedAt: finishedAt,
         elapsedMs: step.elapsedMs ?? finishedAt - step.startedAt,
-      }))
+      })),
     );
     setIsStreaming(false);
     setAnalysisFinishedAt(finishedAt);
@@ -282,7 +312,9 @@ export default function SystemAnalysisPage() {
 
   const setRunState = (runId, updater) => {
     setRuns((currentRuns) =>
-      currentRuns.map((run) => (run.id === runId ? { ...run, ...updater(run) } : run))
+      currentRuns.map((run) =>
+        run.id === runId ? { ...run, ...updater(run) } : run,
+      ),
     );
   };
 
@@ -292,7 +324,16 @@ export default function SystemAnalysisPage() {
       run.error?.payload ||
       "No response body was returned for this analysis.";
 
-    return `Prompt:\n${run.prompt}\n\nResponse:\n${responseBody}`;
+    const sections = [
+      formatEmailSection(
+        "Ontology Agent Analysis",
+        `Generated at: ${new Date(run.finishedAt || run.startedAt).toLocaleString()}`,
+      ),
+      formatEmailSection("Prompt", run.prompt.trim()),
+      formatEmailSection("Response", formatEmailPayload(responseBody)),
+    ];
+
+    return sections.join("\n\n");
   };
 
   const startAnalysis = (submittedPrompt) => {
@@ -329,7 +370,8 @@ export default function SystemAnalysisPage() {
           id: `step-error-${finishedAt}`,
           type: "error",
           message: "Configuration error",
-          payload: "Could not resolve the WebSocket host for /agent/v1/ontology/summary.",
+          payload:
+            "Could not resolve the WebSocket host for /agent/v1/ontology/summary.",
           status: "done",
           startedAt,
           endedAt: finishedAt,
@@ -342,7 +384,8 @@ export default function SystemAnalysisPage() {
         status: "error",
         error: {
           message: "Configuration error",
-          payload: "Could not resolve the WebSocket host for /agent/v1/ontology/summary.",
+          payload:
+            "Could not resolve the WebSocket host for /agent/v1/ontology/summary.",
           createdAt: finishedAt,
         },
       }));
@@ -375,7 +418,7 @@ export default function SystemAnalysisPage() {
                     endedAt: eventTime,
                     elapsedMs: eventTime - step.startedAt,
                   }
-                : step
+                : step,
             );
 
             return [
@@ -453,7 +496,7 @@ export default function SystemAnalysisPage() {
                   endedAt: eventTime,
                   elapsedMs: eventTime - step.startedAt,
                 }
-              : step
+              : step,
           );
 
           return [
@@ -519,7 +562,7 @@ export default function SystemAnalysisPage() {
                 endedAt: errorTime,
                 elapsedMs: errorTime - step.startedAt,
               }
-            : step
+            : step,
         ),
         {
           id: `step-error-${errorTime}`,
@@ -561,7 +604,7 @@ Error details: ${event.message || event.type || "Unknown error"}
         "WebSocket connection closed:",
         `Code: ${event.code}`,
         `Reason: ${event.reason}`,
-        `Was Clean: ${event.wasClean}`
+        `Was Clean: ${event.wasClean}`,
       );
     };
   };
@@ -597,44 +640,25 @@ Error details: ${event.message || event.type || "Unknown error"}
     try {
       await navigator.clipboard.writeText(run.response.payload);
       setCopiedRunId(run.id);
-      window.setTimeout(() => setCopiedRunId((current) => (current === run.id ? null : current)), 1400);
+      window.setTimeout(
+        () =>
+          setCopiedRunId((current) => (current === run.id ? null : current)),
+        1400,
+      );
     } catch {
       setCopiedRunId(null);
     }
   };
 
-  const handleEmailChange = (runId, value) => {
-    setEmailDrafts((current) => ({ ...current, [runId]: value }));
-    setEmailFeedback((current) => ({ ...current, [runId]: "" }));
-  };
-
   const handleEmailSend = (run) => {
-    const draftRecipient = emailDrafts[run.id] || "";
-    const promptedRecipient = window.prompt("Enter email address", draftRecipient);
-
-    if (promptedRecipient == null) {
-      return;
-    }
-
-    const recipient = promptedRecipient.trim();
-
-    if (!recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
-      setEmailFeedback((current) => ({
-        ...current,
-        [run.id]: "Enter a valid email address.",
-      }));
-      return;
-    }
-
-    const subject = `Ontology AI response · ${new Date(run.finishedAt || run.startedAt).toLocaleString()}`;
+    const subject = `Ontology Agent response · ${new Date(run.finishedAt || run.startedAt).toLocaleString()}`;
     const body = getEmailBody(run);
-    const mailtoUrl = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
-    setEmailDrafts((current) => ({ ...current, [run.id]: recipient }));
-    window.location.href = mailtoUrl;
+    window.location.assign(mailtoUrl);
     setEmailFeedback((current) => ({
       ...current,
-      [run.id]: `Opened your email client for ${recipient}.`,
+      [run.id]: "Opened your email client.",
     }));
   };
 
@@ -653,96 +677,107 @@ Error details: ${event.message || event.type || "Unknown error"}
           </div>
         </div>
 
-        {run.status === "streaming" ? (
-          <ShimmerCard />
-        ) : resultEvent ? (
-          <div className="glass-panel overflow-hidden rounded-[14px] animate-[resultEnter_0.4s_ease-out_forwards]">
-            <div
-              className={cn(
-                "h-[2px] w-full",
-                isCompleted
-                  ? "bg-[linear-gradient(90deg,transparent,#a78bfa,#22d3ee,transparent)]"
-                  : "bg-[linear-gradient(90deg,transparent,#fb7185,#f59e0b,transparent)]"
-              )}
-            />
-            <div className="p-5">
-              <div className="flex flex-col gap-3 border-b border-white/8 pb-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-full border border-white/8",
-                      isCompleted
-                        ? "bg-[rgba(167,139,250,0.08)] text-[#c4b5fd]"
-                        : "bg-[rgba(251,113,133,0.08)] text-[#fda4af]"
-                    )}
-                  >
-                    <Sparkles className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="text-[15px] text-[#f5f3ff]"
-                        style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700 }}
-                      >
-                        {resultEvent.message || (isCompleted ? "Analysis Complete" : "Analysis Error")}
-                      </span>
-                      <span
+        {run.status === "streaming"
+          ? <ShimmerCard />
+          : resultEvent
+            ? <div className="glass-panel overflow-hidden rounded-[14px] animate-[resultEnter_0.4s_ease-out_forwards]">
+                <div
+                  className={cn(
+                    "h-[2px] w-full",
+                    isCompleted
+                      ? "bg-[linear-gradient(90deg,transparent,#a78bfa,#22d3ee,transparent)]"
+                      : "bg-[linear-gradient(90deg,transparent,#fb7185,#f59e0b,transparent)]",
+                  )}
+                />
+                <div className="p-5">
+                  <div className="flex flex-col gap-3 border-b border-white/8 pb-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div
                         className={cn(
-                          "rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.18em]",
+                          "flex h-9 w-9 items-center justify-center rounded-full border border-white/8",
                           isCompleted
-                            ? "border border-[rgba(167,139,250,0.22)] bg-[rgba(167,139,250,0.08)] text-[#c4b5fd]"
-                            : "border border-[rgba(251,113,133,0.22)] bg-[rgba(251,113,133,0.08)] text-[#fda4af]"
+                            ? "bg-[rgba(167,139,250,0.08)] text-[#c4b5fd]"
+                            : "bg-[rgba(251,113,133,0.08)] text-[#fda4af]",
                         )}
                       >
-                        {isCompleted ? "last_update" : "error"}
-                      </span>
+                        <Sparkles className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="text-[15px] text-[#f5f3ff]"
+                            style={{
+                              fontFamily: "'Syne', sans-serif",
+                              fontWeight: 700,
+                            }}
+                          >
+                            {resultEvent.message ||
+                              (isCompleted
+                                ? "Analysis Complete"
+                                : "Analysis Error")}
+                          </span>
+                          <span
+                            className={cn(
+                              "rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.18em]",
+                              isCompleted
+                                ? "border border-[rgba(167,139,250,0.22)] bg-[rgba(167,139,250,0.08)] text-[#c4b5fd]"
+                                : "border border-[rgba(251,113,133,0.22)] bg-[rgba(251,113,133,0.08)] text-[#fda4af]",
+                            )}
+                          >
+                            {isCompleted ? "last_update" : "error"}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-xs text-[rgba(255,255,255,0.35)]">
+                          {new Date(resultEvent.createdAt).toLocaleTimeString(
+                            [],
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
+                            },
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="mt-1 text-xs text-[rgba(255,255,255,0.35)]">
-                      {new Date(resultEvent.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                      })}
-                    </div>
+
+                    {isCompleted
+                      ? <div className="flex flex-wrap items-center justify-end gap-2 self-start">
+                          <button
+                            type="button"
+                            onClick={() => handleEmailSend(run)}
+                            className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(34,211,238,0.24)] bg-[rgba(34,211,238,0.08)] px-3 py-2 text-xs text-[#e2e8f0] transition hover:bg-[rgba(34,211,238,0.14)]"
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                            Send Email
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(run)}
+                            className="inline-flex items-center gap-2 rounded-[10px] border border-white/8 bg-white/4 px-3 py-2 text-xs text-[#e2e8f0] transition hover:border-[rgba(34,211,238,0.22)] hover:bg-[rgba(34,211,238,0.08)]"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                            {copiedRunId === run.id ? "Copied" : "Copy"}
+                          </button>
+                        </div>
+                      : null}
                   </div>
-                </div>
 
-                {isCompleted ? (
-                  <div className="flex flex-wrap items-center justify-end gap-2 self-start">
-                    <button
-                      type="button"
-                      onClick={() => handleEmailSend(run)}
-                      className="inline-flex items-center gap-2 rounded-[10px] border border-[rgba(34,211,238,0.24)] bg-[rgba(34,211,238,0.08)] px-3 py-2 text-xs text-[#e2e8f0] transition hover:bg-[rgba(34,211,238,0.14)]"
-                    >
-                      <Mail className="h-3.5 w-3.5" />
-                      Send Email
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(run)}
-                      className="inline-flex items-center gap-2 rounded-[10px] border border-white/8 bg-white/4 px-3 py-2 text-xs text-[#e2e8f0] transition hover:border-[rgba(34,211,238,0.22)] hover:bg-[rgba(34,211,238,0.08)]"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                      {copiedRunId === run.id ? "Copied" : "Copy"}
-                    </button>
+                  <div className="mt-5">
+                    <MarkdownContent content={resultEvent.payload} />
                   </div>
-                ) : null}
-              </div>
 
-              <div className="mt-5">
-                <MarkdownContent content={resultEvent.payload} />
-              </div>
-
-              {isCompleted ? (
-                <div className="mt-3">
-                  {feedback ? (
-                    <div className="text-xs text-[rgba(255,255,255,0.55)]">{feedback}</div>
-                  ) : null}
+                  {isCompleted
+                    ? <div className="mt-3">
+                        {feedback
+                          ? <div className="text-xs text-[rgba(255,255,255,0.55)]">
+                              {feedback}
+                            </div>
+                          : null}
+                      </div>
+                    : null}
                 </div>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
+              </div>
+            : null}
       </div>
     );
   };
@@ -962,9 +997,6 @@ Error details: ${event.message || event.type || "Unknown error"}
                 >
                   Ontology
                 </div>
-                <div className="text-[10px] uppercase tracking-[0.24em] text-[rgba(255,255,255,0.35)]">
-                  Aurora Glass
-                </div>
               </div>
             </div>
 
@@ -979,9 +1011,13 @@ Error details: ${event.message || event.type || "Unknown error"}
                       "flex items-center gap-3 rounded-[12px] border border-transparent px-3 py-3 text-sm text-[rgba(255,255,255,0.6)] transition",
                       item.active
                         ? "border-[rgba(167,139,250,0.12)] bg-[rgba(167,139,250,0.1)] text-[#f5f3ff]"
-                        : "hover:border-white/6 hover:bg-white/4 hover:text-[#e2e8f0]"
+                        : "hover:border-white/6 hover:bg-white/4 hover:text-[#e2e8f0]",
                     )}
-                    style={item.active ? { boxShadow: "inset 2px 0 0 #a78bfa" } : undefined}
+                    style={
+                      item.active
+                        ? { boxShadow: "inset 2px 0 0 #a78bfa" }
+                        : undefined
+                    }
                   >
                     <Icon className="h-4 w-4" />
                     <span>{item.label}</span>
@@ -1009,7 +1045,9 @@ Error details: ${event.message || event.type || "Unknown error"}
             </div>
 
             <div className="mt-auto flex items-center justify-between rounded-[12px] border border-white/8 bg-white/4 px-3 py-2">
-              <div className="text-xs text-[rgba(255,255,255,0.35)]">v0.1.0</div>
+              <div className="text-xs text-[rgba(255,255,255,0.35)]">
+                v0.1.0
+              </div>
               <div className="flex items-center gap-2 text-xs text-[#6ee7b7]">
                 <span className="h-2 w-2 rounded-full bg-[#6ee7b7] animate-pulse" />
                 online
@@ -1023,12 +1061,15 @@ Error details: ${event.message || event.type || "Unknown error"}
                 <div>
                   <div
                     className="text-[28px] leading-none text-[#f5f3ff]"
-                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700 }}
+                    style={{
+                      fontFamily: "'Syne', sans-serif",
+                      fontWeight: 700,
+                    }}
                   >
-                    Ontology AI
+                    Ontology Agent
                   </div>
                   <div className="mt-2 text-sm text-[rgba(255,255,255,0.35)]">
-                    Premium chatbot for system analysis and ontology summaries.
+                    Premium chatbot for ontology queries and summaries.
                   </div>
                 </div>
                 <div className="rounded-full border border-white/8 bg-white/4 px-3 py-1.5 text-[11px] uppercase tracking-[0.22em] text-[rgba(255,255,255,0.35)]">
@@ -1045,17 +1086,20 @@ Error details: ${event.message || event.type || "Unknown error"}
                       Result
                     </div>
                     <div className="font-['JetBrains_Mono',monospace] text-[10px] text-[rgba(255,255,255,0.2)]">
-                      {totalElapsedMs > 0 ? `${(totalElapsedMs / 1000).toFixed(2)}s` : "--"}
+                      {totalElapsedMs > 0
+                        ? `${(totalElapsedMs / 1000).toFixed(2)}s`
+                        : "--"}
                     </div>
                   </div>
                 </div>
 
-                <div ref={chatScrollRef} className="flex-1 overflow-y-auto px-5 py-5">
-                  {runs.length === 0 ? (
-                    <RingsEmptyState onPick={handleSuggestion} />
-                  ) : (
-                    runs.map((run) => renderRunCard(run))
-                  )}
+                <div
+                  ref={chatScrollRef}
+                  className="flex-1 overflow-y-auto px-5 py-5"
+                >
+                  {runs.length === 0
+                    ? <RingsEmptyState />
+                    : runs.map((run) => renderRunCard(run))}
                 </div>
               </section>
 
@@ -1066,7 +1110,7 @@ Error details: ${event.message || event.type || "Unknown error"}
                       value={prompt}
                       onChange={(event) => setPrompt(event.target.value)}
                       onKeyDown={handlePromptKeyDown}
-                      placeholder="Ask about your system..."
+                      placeholder="Ask about your ontology..."
                       disabled={isStreaming}
                       rows={3}
                       className="w-full resize-none rounded-[10px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-[#e2e8f0] outline-none transition placeholder:text-[rgba(255,255,255,0.35)] focus:border-[rgba(167,139,250,0.4)] focus:shadow-[0_0_0_3px_rgba(139,92,246,0.1)] disabled:opacity-50"
@@ -1079,11 +1123,9 @@ Error details: ${event.message || event.type || "Unknown error"}
                     disabled={isStreaming || !prompt.trim()}
                     className="inline-flex h-11 w-11 items-center justify-center rounded-[8px] bg-[linear-gradient(135deg,#6d28d9,#0e7490)] text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-80"
                   >
-                    {isStreaming ? (
-                      <Lock className="h-4 w-4" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
+                    {isStreaming
+                      ? <Lock className="h-4 w-4" />
+                      : <Send className="h-4 w-4" />}
                   </button>
                 </div>
               </section>
@@ -1098,7 +1140,7 @@ Error details: ${event.message || event.type || "Unknown error"}
                           ? "bg-[#6ee7b7]"
                           : isStreaming
                             ? "bg-amber-300 animate-pulse"
-                            : "bg-[rgba(255,255,255,0.2)]"
+                            : "bg-[rgba(255,255,255,0.2)]",
                       )}
                     />
                     <span className="text-[10px] uppercase tracking-[0.24em] text-[rgba(255,255,255,0.35)]">
@@ -1106,50 +1148,51 @@ Error details: ${event.message || event.type || "Unknown error"}
                     </span>
                   </div>
 
-                  {completionLabel ? (
-                    <div className="rounded-full border border-[rgba(16,185,129,0.2)] bg-[rgba(16,185,129,0.08)] px-3 py-1.5 text-xs text-[#6ee7b7]">
-                      ✓ {completionLabel}
-                    </div>
-                  ) : null}
+                  {completionLabel
+                    ? <div className="rounded-full border border-[rgba(16,185,129,0.2)] bg-[rgba(16,185,129,0.08)] px-3 py-1.5 text-xs text-[#6ee7b7]">
+                        ✓ {completionLabel}
+                      </div>
+                    : null}
                 </div>
 
                 <div className="mt-4 space-y-4">
-                  {steps.length === 0 ? (
-                    <div className="rounded-[12px] border border-dashed border-white/8 bg-white/3 px-4 py-8 text-center text-sm text-[rgba(255,255,255,0.35)]">
-                      Streaming reasoning steps from `/ontology/summary` will appear here.
-                    </div>
-                  ) : (
-                    steps.map((step, index) => {
-                      const state =
-                        step.status === "active"
-                          ? "active"
-                          : step.status === "done"
-                            ? "done"
-                            : "pending";
+                  {steps.length === 0
+                    ? <div className="rounded-[12px] border border-dashed border-white/8 bg-white/3 px-4 py-8 text-center text-sm text-[rgba(255,255,255,0.35)]">
+                        Streaming reasoning steps from `/ontology/summary` will
+                        appear here.
+                      </div>
+                    : steps.map((step, index) => {
+                        const state =
+                          step.status === "active"
+                            ? "active"
+                            : step.status === "done"
+                              ? "done"
+                              : "pending";
 
-                      const elapsedMs =
-                        step.elapsedMs ??
-                        (step.status === "active" ? now - step.startedAt : null);
+                        const elapsedMs =
+                          step.elapsedMs ??
+                          (step.status === "active"
+                            ? now - step.startedAt
+                            : null);
 
-                      return (
-                        <StepCard
-                          key={step.id}
-                          step={{ ...step, elapsedMs }}
-                          index={index}
-                          state={state}
-                          onToggle={() =>
-                            setSteps((current) =>
-                              current.map((entry) =>
-                                entry.id === step.id
-                                  ? { ...entry, expanded: !entry.expanded }
-                                  : entry
+                        return (
+                          <StepCard
+                            key={step.id}
+                            step={{ ...step, elapsedMs }}
+                            index={index}
+                            state={state}
+                            onToggle={() =>
+                              setSteps((current) =>
+                                current.map((entry) =>
+                                  entry.id === step.id
+                                    ? { ...entry, expanded: !entry.expanded }
+                                    : entry,
+                                ),
                               )
-                            )
-                          }
-                        />
-                      );
-                    })
-                  )}
+                            }
+                          />
+                        );
+                      })}
                 </div>
               </section>
             </div>
