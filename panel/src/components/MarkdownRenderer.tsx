@@ -3,6 +3,7 @@
 import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { markdownComponents } from "@/components/markdown-components";
 
 interface MarkdownRendererProps {
   content: string;
@@ -38,20 +39,35 @@ export function MarkdownRenderer({ content, className = "" }: MarkdownRendererPr
           ),
           
           // Style code blocks
-          code: (({ node, inline, ...props }: any) => {
-            if (inline) {
+          code: (({ node, className, children, ...props }: any) => {
+            const rendered = markdownComponents.code({
+              className,
+              children,
+              ...props,
+            });
+
+            if (className?.includes("language-mermaid")) {
+              return rendered;
+            }
+
+            if (className) {
               return (
                 <code
-                  className="bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded font-mono text-xs"
+                  className={`block bg-gray-900 dark:bg-black text-gray-100 p-3 rounded-lg font-mono text-xs overflow-x-auto my-2 ${className}`}
                   {...props}
-                />
+                >
+                  {children}
+                </code>
               );
             }
+
             return (
               <code
-                className="block bg-gray-900 dark:bg-black text-gray-100 p-3 rounded-lg font-mono text-xs overflow-x-auto my-2"
+                className="bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded font-mono text-xs"
                 {...props}
-              />
+              >
+                {children}
+              </code>
             );
           }) as any,
           pre: ({ node, ...props }) => (
