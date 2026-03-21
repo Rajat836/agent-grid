@@ -33,7 +33,7 @@ const navItems = [
     active: true,
   },
   {
-    label: "Knowledge Graph",
+    label: "Documentation Agent",
     href: "/knowledge-graph",
     icon: Network,
     active: false,
