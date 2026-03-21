@@ -21,7 +21,7 @@ import { markdownComponents } from "@/components/markdown-components";
 const samplePrompts = [
   "Give me list of services",
   "Give me list of teams",
-  "List all entities under customer onboarding flow",
+  "List all entities under customer onboarding feature",
   "Give me list of api's under set password entity",
 ];
 
