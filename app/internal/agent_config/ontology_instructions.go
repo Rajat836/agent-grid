@@ -297,7 +297,7 @@ Instructions:
 - Provide concise summary based on the following API call results only.
 - Do NOT use any information outside of these results.
 - If results are empty, say "No relevant information found".
-- Use all the results to provide comprehensive summary. Do NOT ignore any result.
+- Use all the step results to provide comprehensive summary. Do NOT ignore any field n.
 - If the user hasn't specified format for data then use markdown tables for tabular data and JSON for non-tabular data.
 
 User Query:
